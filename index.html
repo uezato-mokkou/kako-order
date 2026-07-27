@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Kako食事補助">
+<meta name="app-version" content="20260727000001">
+<title>お食事処 Kako 食事補助</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --g50:#F4F7EE;--g100:#E6EEDA;--g200:#CBDDB1;--g400:#7FA855;
+  --g500:#5C8C3C;--g600:#456B2B;--g700:#33501F;--g900:#1E3010;
+  --clay:#C8662F;--clay-l:#FBE9DD;--clay-d:#9A4A1F;
+  --bg:#FAF8F2;--card:#FFFFFF;--line:#E3DECF;
+  --tx:#2B2A22;--txs:#6E6C5C;--txf:#A09E8C;
+  --sh:0 2px 10px rgba(69,107,43,.08);
+  --sh2:0 4px 20px rgba(69,107,43,.12);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;font-family:"Noto Sans JP",-apple-system,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;}
+.app{max-width:760px;margin:0 auto;min-height:100vh;background:var(--bg);}
+
+/* Header */
+.hdr{background:linear-gradient(160deg,var(--g500),var(--g700));color:#fff;padding:18px 20px 16px;position:relative;overflow:hidden;}
+.hdr::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(255,255,255,.10),transparent 70%);border-radius:50%;}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:relative;z-index:1;}
+.hdr-title{font-family:"Shippori Mincho",serif;font-size:19px;font-weight:800;display:flex;align-items:center;gap:9px;}
+.hdr-logo{width:32px;height:32px;border-radius:9px;overflow:hidden;flex-shrink:0;}
+.hdr-logo img{width:100%;height:100%;object-fit:cover;}
+.hdr-sub{font-size:11px;opacity:.78;margin-top:4px;position:relative;z-index:1;}
+.hdr-name-btn{border:none;background:rgba(255,255,255,.15);border-radius:8px;padding:4px 10px;cursor:pointer;color:#fff;font-size:13px;font-weight:700;font-family:inherit;}
+.hdr-date{font-size:12px;opacity:.85;margin-top:2px;}
+.status-pill{margin-top:13px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:9px 14px;font-size:12px;display:flex;align-items:flex-start;gap:8px;position:relative;z-index:1;line-height:1.6;}
+.pdot{width:7px;height:7px;border-radius:50%;background:#BFE89A;margin-top:5px;flex-shrink:0;animation:pulse 2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(191,232,154,.5)}70%{box-shadow:0 0 0 6px rgba(191,232,154,0)}100%{box-shadow:0 0 0 0 rgba(191,232,154,0)}}
+
+/* Tabs */
+.tab-wrap{padding:14px 14px 0;}
+.tab-bar{display:flex;gap:3px;background:var(--card);border-radius:14px;padding:5px;box-shadow:var(--sh2);margin-bottom:14px;}
+.tb{flex:1;border:none;background:transparent;padding:9px 2px 8px;border-radius:10px;font-size:9.5px;color:var(--txf);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;font-weight:500;transition:all .2s;white-space:nowrap;}
+.tb-icon{font-size:16px;line-height:1;}
+.tb.active{background:var(--g500);color:#fff;font-weight:700;box-shadow:0 3px 10px rgba(69,107,43,.35);}
+
+/* Container */
+.con{padding:0 14px 32px;}
+.screen{display:none;}.screen.active{display:block;}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:var(--sh);border:1px solid rgba(0,0,0,.03);}
+.sec{font-size:12.5px;color:var(--txs);margin-bottom:11px;display:flex;align-items:center;gap:6px;font-weight:700;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--g500);}
+
+/* Gauge */
+.gauge-card{background:linear-gradient(135deg,var(--g50),#fff);border:1px solid var(--g100);}
+.gauge-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--txs);margin-bottom:8px;}
+.gauge-amt{font-size:15px;font-weight:800;color:var(--g700);font-family:"Shippori Mincho",serif;}
+.gauge-bar{height:9px;background:var(--g100);border-radius:5px;overflow:hidden;}
+.gauge-fill{height:100%;background:linear-gradient(90deg,var(--g400),var(--g600));border-radius:5px;transition:width .4s;}
+.gauge-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--txf);margin-top:6px;}
+
+/* Menu item */
+.mi{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:12px 13px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);cursor:pointer;margin-bottom:8px;transition:all .15s;font-family:inherit;}
+.mi:active{transform:scale(.985);}
+.mi.on{border-color:var(--g500);background:var(--g50);box-shadow:0 2px 8px rgba(92,140,60,.15);}
+.mi-left{display:flex;align-items:center;gap:9px;}
+.mi-icon{width:28px;height:28px;border-radius:8px;background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.mi.on .mi-icon{background:var(--g100);}
+.mi-name{font-size:13.5px;font-weight:500;}
+.mi.on .mi-name{color:var(--g700);font-weight:700;}
+.mi-price{font-size:13px;color:var(--txs);font-weight:700;font-variant-numeric:tabular-nums;}
+.mi.on .mi-price{color:var(--g700);}
+.cb{width:18px;height:18px;border-radius:6px;border:2px solid #D6D2C2;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0;transition:all .15s;}
+.mi.on .cb{background:var(--g500);border-color:var(--g500);}
+
+/* Summary */
+.sum-box{border-top:1.5px dashed var(--line);padding-top:12px;margin-top:6px;}
+.total-row{display:flex;justify-content:space-between;align-items:baseline;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+.total-lbl{font-size:13px;color:var(--txs);}
+.total-amt{font-size:28px;font-weight:800;color:var(--g700);font-family:"Shippori Mincho",serif;font-variant-numeric:tabular-nums;}
+.hint{font-size:11px;color:var(--txf);text-align:center;margin:10px 0 0;}
+
+/* Buttons */
+.btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,var(--g500),var(--g600));color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit;box-shadow:0 4px 14px rgba(69,107,43,.30);transition:all .15s;}
+.btn:active{transform:scale(.98);}
+.btn:disabled{background:#DCD9CB;box-shadow:none;cursor:not-allowed;}
+.btn2{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:12px;background:var(--card);color:var(--tx);font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;margin-top:9px;}
+.btn2:hover{border-color:var(--g200);background:var(--g50);}
+
+/* LINE frame */
+.line-frame{background:#06C755;border-radius:13px;padding:14px;}
+.line-grp{color:#fff;font-size:11px;font-weight:700;margin-bottom:9px;opacity:.9;}
+.line-bubble{background:rgba(255,255,255,.97);border-radius:11px;padding:12px 13px;font-size:12px;line-height:1.8;color:var(--tx);white-space:pre-wrap;word-break:break-all;}
+
+/* Info / success boxes */
+.info-box{background:var(--g50);border:1px solid var(--g100);border-radius:11px;padding:11px 14px;font-size:12px;color:var(--g700);line-height:1.6;}
+.ok-box{background:#EAF5E2;color:var(--g700);border-radius:11px;padding:11px 14px;font-size:13px;display:flex;align-items:center;gap:8px;font-weight:700;border:1px solid var(--g200);}
+.warn-box{background:var(--clay-l);border:1px solid #F0D2BC;border-radius:11px;padding:11px 14px;font-size:12px;color:var(--clay-d);line-height:1.6;}
+
+/* Stamp */
+.stamp-wrap{position:relative;}
+.stamp-ov{position:absolute;top:0;left:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;pointer-events:none;z-index:5;padding-top:40px;}
+.stamp-ov.on{display:flex;}
+.stamp-mk{border:4px solid var(--g600);color:var(--g600);font-family:"Shippori Mincho",serif;font-weight:800;font-size:28px;padding:12px 30px;border-radius:14px;opacity:.45;transform:rotate(-9deg);background:rgba(255,255,255,.5);white-space:nowrap;}
+
+/* History rows */
+.h-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);}
+.h-row:last-child{border-bottom:none;}
+.h-date{font-size:11px;color:var(--txf);margin-bottom:2px;}
+.h-name{font-size:13px;font-weight:500;}
+.h-price{font-size:13.5px;font-weight:700;color:var(--g700);font-variant-numeric:tabular-nums;}
+
+/* Settings */
+.set-row{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:14px 4px;border:none;background:none;border-bottom:1px solid var(--line);cursor:pointer;font-size:14px;font-family:inherit;color:var(--tx);}
+.set-row:last-child{border-bottom:none;}
+.set-l{display:flex;align-items:center;gap:11px;}
+.set-ic{width:32px;height:32px;border-radius:9px;background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:15px;}
+.back-l{display:flex;align-items:center;gap:6px;border:none;background:none;color:var(--txs);font-size:13px;padding:8px 2px;margin-bottom:10px;cursor:pointer;font-family:inherit;font-weight:500;}
+
+/* Admin sub tabs */
+.asb{flex:1;border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:9px 4px;font-size:10.5px;font-weight:500;color:var(--txs);cursor:pointer;font-family:inherit;line-height:1.3;}
+.asb.active{background:var(--g700);color:#fff;border-color:var(--g700);font-weight:700;}
+
+/* Form fields */
+.fl{font-size:12.5px;color:var(--txs);margin-bottom:7px;font-weight:700;}
+.fb{margin-bottom:14px;}
+input[type="text"],input[type="password"],input[type="number"]{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;background:#fff;color:var(--tx);font-family:inherit;}
+input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,140,60,.12);}
+.stat-pill{font-family:"Shippori Mincho",serif;font-size:22px;font-weight:800;color:var(--tx);}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);align-items:center;justify-content:center;z-index:50;padding:20px;}
+.modal-bg.on{display:flex;}
+.modal{background:var(--card);border-radius:18px;padding:22px;max-width:340px;width:100%;}
+
+/* Login */
+#login-screen{display:block;position:fixed;inset:0;background:var(--bg);z-index:60;overflow-y:auto;}
+.login-wrap{max-width:420px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:32px 20px;}
+.login-logo{width:64px;height:64px;border-radius:16px;background:linear-gradient(160deg,var(--g500),var(--g700));display:flex;align-items:center;justify-content:center;margin:0 auto 16px;overflow:hidden;}
+.footer-note{text-align:center;font-size:11px;color:var(--txf);padding:24px 0 10px;}
+
+/* Loading */
+.loading{text-align:center;color:var(--txf);font-size:13px;padding:20px 0;}
+
+@media(max-width:480px){.hdr{padding:16px 14px 14px;}.tab-wrap{padding:12px 12px 0;}.con{padding:0 12px 28px;}}
+@media(min-width:760px){.app{box-shadow:0 0 40px rgba(0,0,0,.04);}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ===== Header ===== -->
+<div class="hdr">
+  <div class="hdr-row">
+    <div>
+      <div class="hdr-title">
+        <span class="hdr-logo" id="hdr-logo-wrap"><span style="color:#fff;font-size:10px;font-weight:900;font-family:'Shippori Mincho',serif;padding:4px;">Kako</span></span>
+        お食事処 Kako 食事補助
+      </div>
+      <div class="hdr-sub">新川小学校向かい／☎0980-87-0586</div>
+    </div>
+    <div style="text-align:right;">
+      <button class="hdr-name-btn" id="hdr-name-btn" onclick="openPinModal()">— ▾</button>
+      <div class="hdr-date" id="hdr-date"></div>
+    </div>
+  </div>
+  <div class="status-pill"><span class="pdot"></span><span id="status-text">ランチ営業中　11:00〜14:00　｜　ディナー 17:00〜21:30　｜　日曜定休</span></div>
+</div>
+
+<!-- ===== Tabs ===== -->
+<div class="tab-wrap">
+  <div class="tab-bar">
+    <button class="tb active" id="tb-order"   onclick="showTab('order')"  ><span class="tb-icon">🍽</span>店内注文</button>
+    <button class="tb"        id="tb-bento"   onclick="showTab('bento')"  ><span class="tb-icon">🍱</span>弁当注文</button>
+    <button class="tb"        id="tb-sum"     onclick="showTab('sum')"    ><span class="tb-icon">📊</span>弁当集計</button>
+    <button class="tb"        id="tb-hist"    onclick="showTab('hist')"   ><span class="tb-icon">📜</span>履歴</button>
+    <button class="tb"        id="tb-admin"   onclick="showTab('admin')"  style="display:none;"><span class="tb-icon">🔐</span>管理者</button>
+    <button class="tb"        id="tb-settings"onclick="showTab('settings')"><span class="tb-icon">⚙️</span>設定</button>
+  </div>
+</div>
+
+<div class="con">
+
+<!-- ===== 店内注文 ===== -->
+<div class="screen active" id="sc-order">
+  <div class="card gauge-card">
+    <div class="gauge-top"><span>今月の補助利用額</span><span class="gauge-amt" id="gauge-amt">¥0 <span style="color:var(--txf);font-weight:500;font-size:13px;">/ ¥7,500</span></span></div>
+    <div class="gauge-bar"><div class="gauge-fill" id="gauge-fill" style="width:0%"></div></div>
+    <div class="gauge-foot"><span id="gauge-remain">残り ¥7,500</span><span id="gauge-pct">0% 利用中</span></div>
+  </div>
+  <div class="card" id="order-select">
+    <div class="sec"><span class="dot"></span>注文内容を選んでください（複数選択可）</div>
+    <div id="lunch-list"></div>
+    <div class="sum-box">
+      <div id="order-summary" style="font-size:13px;color:var(--txs);">未選択</div>
+      <div class="total-row"><span class="total-lbl">合計</span><span class="total-amt" id="order-total">¥0</span></div>
+    </div>
+    <button class="btn" id="order-confirm-btn" disabled>選択してください</button>
+    <div class="hint">📱 この画面を店員さんに見せてください</div>
+  </div>
+  <div class="card" id="order-sent" style="display:none;">
+    <div style="text-align:center;padding:4px 0 14px;">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 10px;">📨</div>
+      <p style="font-weight:700;margin:0;font-size:14px;">LINEグループへ送信しました</p>
+    </div>
+    <div class="line-frame">
+      <div class="line-grp">💬 Kako食事報告グループ</div>
+      <div class="line-bubble" id="order-line-msg"></div>
+    </div>
+    <button class="btn2" id="store-ok-btn" onclick="storeConfirm()" style="border-color:var(--g200);color:var(--g700);font-weight:700;">✅ 確認OK（店員用）</button>
+    <div class="ok-box" id="store-ok-box" style="display:none;margin-top:10px;">✅ 完了：確認されました</div>
+    <div class="info-box" style="margin-top:12px;">💬 本人のSlack DMにも同時送信されました</div>
+    <button class="btn2" onclick="resetOrder()">もう一度試す</button>
+  </div>
+</div>
+
+<!-- ===== 弁当注文 ===== -->
+<div class="screen" id="sc-bento">
+  <div class="card" id="bento-form">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="sec" style="margin-bottom:0;"><span class="dot"></span>翌日のお弁当を事前注文</div>
+      <span style="font-size:11px;background:var(--clay-l);color:var(--clay-d);padding:5px 11px;border-radius:20px;font-weight:700;">⏰ 9:00締切</span>
+    </div>
+    <div id="bento-list"></div>
+    <div class="sum-box">
+      <div id="bento-summary" style="font-size:13px;color:var(--txs);">未選択</div>
+      <div class="total-row"><span class="total-lbl">合計</span><span class="total-amt" id="bento-total">¥0</span></div>
+    </div>
+    <button class="btn" id="bento-confirm-btn" disabled>選択してください</button>
+  </div>
+  <div class="card" id="bento-done" style="display:none;text-align:center;">
+    <div style="font-size:36px;margin-bottom:10px;">✅</div>
+    <p style="font-weight:700;margin:0 0 5px;font-size:15px;">注文を受け付けました</p>
+    <p id="bento-done-text" style="font-size:13px;color:var(--txs);margin:0;"></p>
+    <div class="info-box" style="margin-top:14px;text-align:left;">🕛 12:00の休憩中に弁当係がまとめて受け取りに行きます。個人で取りに行ってもOKです。</div>
+    <button class="btn2" onclick="resetBento()">もう一度選ぶ</button>
+  </div>
+</div>
+
+<!-- ===== 弁当集計 ===== -->
+<div class="screen" id="sc-sum">
+  <div class="stamp-wrap" id="sum-stamp-wrap">
+    <div class="stamp-ov" id="sum-stamp"><div class="stamp-mk">本日 注文済み</div></div>
+    <div class="card" id="sum-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div class="sec" style="margin-bottom:0;"><span class="dot"></span>本日の注文状況（全員）</div>
+        <span style="font-size:11px;background:var(--g100);color:var(--g700);padding:5px 11px;border-radius:20px;font-weight:700;" id="sum-date-badge"></span>
+      </div>
+      <div style="font-size:11.5px;color:var(--txf);margin-bottom:14px;">9:00締切後に弁当係がKakoさんへ送信します</div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;">
+        <div style="flex:1;background:var(--g50);border-radius:11px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:var(--txs);margin-bottom:3px;">注文人数</div>
+          <div style="font-size:21px;font-weight:800;color:var(--g700);font-family:'Shippori Mincho',serif;" id="sum-count">0<span style="font-size:12px;font-weight:500;color:var(--txs);">人</span></div>
+        </div>
+        <div style="flex:1;background:var(--g50);border-radius:11px;padding:12px;text-align:center;">
+          <div style="font-size:11px;color:var(--txs);margin-bottom:3px;">合計金額</div>
+          <div style="font-size:21px;font-weight:800;color:var(--g700);font-family:'Shippori Mincho',serif;" id="sum-total">¥0</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--txs);font-weight:700;margin-bottom:8px;">注文した人・内容</div>
+      <div id="sum-orders-list"><div class="loading">読み込み中...</div></div>
+      <div style="border-top:1px solid var(--line);padding-top:12px;margin-top:8px;">
+        <div style="font-size:12px;color:var(--txs);font-weight:700;margin-bottom:8px;">メニュー別 集計</div>
+        <div id="sum-menu-count"></div>
+      </div>
+    </div>
+    <div class="card" id="sum-line-card">
+      <div class="sec"><span class="dot"></span>Kakoさんへ送るLINEメッセージ</div>
+      <div class="line-frame">
+        <div class="line-grp">💬 Kako食事報告グループ</div>
+        <div class="line-bubble" id="sum-line-msg"></div>
+      </div>
+      <div class="info-box" style="margin-top:12px;">⏰ 9:00を過ぎると吉田・大盛・大山のSlack DMに確認メッセージが届きます</div>
+      <button class="btn" onclick="sendBentoLine()">この内容をLINEへ送信する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 履歴 ===== -->
+<div class="screen" id="sc-hist">
+  <div class="card gauge-card">
+    <div class="gauge-top"><span>今月の利用合計</span><span class="gauge-amt" id="hist-total">¥0</span></div>
+    <div class="gauge-bar"><div class="gauge-fill" id="hist-gauge" style="width:0%"></div></div>
+  </div>
+  <div class="card">
+    <div class="sec"><span class="dot"></span>利用履歴（直近30件）</div>
+    <div id="hist-list"><div class="loading">読み込み中...</div></div>
+  </div>
+</div>
+
+<!-- ===== 管理者 ===== -->
+<div class="screen" id="sc-admin">
+  <div class="card" style="background:linear-gradient(135deg,var(--g700),var(--g900));color:#fff;padding:14px 18px;margin-bottom:12px;">
+    <div style="font-size:12px;font-weight:700;opacity:.85;margin-bottom:2px;">🔐 管理者専用</div>
+    <div style="font-family:'Shippori Mincho',serif;font-size:17px;font-weight:800;" id="admin-month-label">月次管理</div>
+  </div>
+  <div style="display:flex;gap:5px;margin-bottom:14px;">
+    <button class="asb active" id="asb-detail"  onclick="showAdminSub('detail')">📋 個人別明細</button>
+    <button class="asb"        id="asb-summary" onclick="showAdminSub('summary')">📊 月次集計</button>
+    <button class="asb"        id="asb-payroll" onclick="showAdminSub('payroll')">💴 天引き一覧</button>
+  </div>
+  <div id="admin-detail">
+    <div class="card"><div class="sec"><span class="dot"></span>全スタッフ 利用明細</div><div id="admin-detail-list"><div class="loading">読み込み中...</div></div></div>
+  </div>
+  <div id="admin-summary" style="display:none;">
+    <div class="card">
+      <div class="sec"><span class="dot"></span>スタッフ別 月間利用合計</div>
+      <div id="admin-summary-list"></div>
+      <div style="border-top:1.5px solid var(--g200);margin-top:10px;padding-top:10px;display:flex;justify-content:space-between;align-items:baseline;">
+        <span style="font-size:13px;font-weight:700;color:var(--g700);">全スタッフ合計</span>
+        <span id="admin-grand" style="font-size:20px;font-weight:800;font-family:'Shippori Mincho',serif;color:var(--g700);"></span>
+      </div>
+    </div>
+  </div>
+  <div id="admin-payroll" style="display:none;">
+    <div class="card">
+      <div class="sec"><span class="dot"></span>給与天引き一覧</div>
+      <div style="font-size:12px;color:var(--txs);margin-bottom:12px;">利用合計の半額が翌月給与より天引き。上限¥15,000超は超過分も全額本人負担。</div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--txf);font-weight:700;padding:5px 2px;border-bottom:1px solid var(--line);margin-bottom:4px;">
+        <span style="flex:1.5">氏名</span><span style="text-align:right;flex:1">利用合計</span><span style="text-align:right;flex:1">会社補助</span><span style="text-align:right;flex:1;color:var(--clay);">天引き</span>
+      </div>
+      <div id="admin-payroll-list"></div>
+      <div style="border-top:1.5px solid var(--g200);margin-top:10px;padding-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:6px;"><span>会社負担合計</span><span id="admin-co" style="color:var(--g700);"></span></div>
+        <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;"><span>天引き合計</span><span id="admin-dd" style="color:var(--clay);"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 設定 ===== -->
+<div class="screen" id="sc-settings">
+  <div class="screen active" id="set-menu">
+    <div class="card" style="padding:6px 16px;">
+      <button class="set-row" onclick="openSet('account')"><span class="set-l"><span class="set-ic">👤</span>アカウント情報</span><span style="color:var(--txf);">›</span></button>
+      <button class="set-row" onclick="openSet('transfer')"><span class="set-l" style="color:var(--g700);font-weight:700;"><span class="set-ic" style="background:var(--g100);">🔄</span>権利を譲渡する</span><span style="color:var(--g500);">›</span></button>
+      <button class="set-row" onclick="openSet('notify')"><span class="set-l"><span class="set-ic">🔔</span>通知設定（Slack・LINE）</span><span style="color:var(--txf);">›</span></button>
+      <button class="set-row" onclick="openLogout()"><span class="set-l"><span class="set-ic">🚪</span>ログアウト</span></button>
+    </div>
+    <div class="footer-note">v20260727 ／ 有限会社うえざと木工<br>お食事処 Kako 食事補助システム</div>
+  </div>
+  <div class="screen" id="set-account">
+    <button class="back-l" onclick="closeSet()">← 設定に戻る</button>
+    <div class="card">
+      <div class="sec"><span class="dot"></span>アカウント情報</div>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--line);">
+        <div id="acct-avatar" style="width:48px;height:48px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--g700);font-family:'Shippori Mincho',serif;flex-shrink:0;"></div>
+        <div><div id="acct-name" style="font-size:15px;font-weight:700;"></div><div style="font-size:12px;color:var(--txs);margin-top:1px;">有限会社うえざと木工</div></div>
+      </div>
+      <div class="fb"><div class="fl">今月の補助利用額</div><div style="font-size:14px;font-weight:500;" id="acct-usage">¥0 / ¥7,500</div></div>
+      <div class="info-box">🔐 PINコードの変更は、画面右上のお名前をタップしてください</div>
+    </div>
+  </div>
+  <div class="screen" id="set-transfer">
+    <button class="back-l" onclick="closeSet()">← 設定に戻る</button>
+    <div class="card">
+      <div class="sec"><span class="dot"></span>権利の譲渡</div>
+      <div class="info-box">個人間でのやり取りです。お金の清算は当事者同士でお願いします。会社は一切関与しません。</div>
+      <div class="fb" style="margin-top:12px;"><div class="fl">自分の残り権利（今月）</div><div class="stat-pill" id="xfer-remain">- 食分</div></div>
+      <div class="fb"><div class="fl">譲渡する相手</div>
+        <input list="xfer-staff" id="xfer-target" placeholder="名前を選択または入力" oninput="checkXfer()">
+        <datalist id="xfer-staff" id="xfer-staff-list"></datalist>
+      </div>
+      <div class="fb"><div class="fl">譲渡する権利数</div><input type="number" id="xfer-amt" min="1" value="1" step="1" oninput="checkXfer()"></div>
+      <button class="btn" id="xfer-btn" disabled onclick="doXfer()">譲渡する相手を選んでください</button>
+      <div class="ok-box" id="xfer-done" style="display:none;margin-top:10px;"></div>
+    </div>
+  </div>
+  <div class="screen" id="set-notify">
+    <button class="back-l" onclick="closeSet()">← 設定に戻る</button>
+    <div class="card">
+      <div class="sec"><span class="dot"></span>Slack 通知設定</div>
+      <div class="fb"><div class="fl">Slack Webhook URL</div><input type="text" id="slack-url" placeholder="https://hooks.slack.com/services/..."></div>
+      <button class="btn" onclick="saveSlack()">保存</button>
+      <button class="btn2" onclick="testSlack()">テスト送信</button>
+    </div>
+    <div class="card">
+      <div class="sec"><span class="dot"></span>LINE グループ URL</div>
+      <div class="info-box" style="margin-bottom:12px;">LINE送信ボタンを押すと、メッセージが自動コピーされてLINEグループが開きます</div>
+      <div class="fb"><div class="fl">LINE グループ URL</div><input type="text" id="line-url" placeholder="https://line.me/ti/g2/..."></div>
+      <button class="btn" onclick="saveLine()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note" id="main-footer"></div>
+</div><!-- /con -->
+</div><!-- /app -->
+
+<!-- ===== PIN設定モーダル ===== -->
+<div class="modal-bg" id="pin-modal">
+  <div class="modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="font-family:'Shippori Mincho',serif;font-size:16px;font-weight:800;">PINコードの設定</div>
+      <button onclick="closePinModal()" style="border:none;background:none;font-size:18px;color:var(--txf);cursor:pointer;">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;background:var(--g50);border-radius:11px;padding:12px 14px;margin-bottom:16px;">
+      <div id="pin-avatar" style="width:40px;height:40px;border-radius:50%;background:var(--g200);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--g700);font-family:'Shippori Mincho',serif;flex-shrink:0;"></div>
+      <div><div id="pin-uname" style="font-size:14px;font-weight:700;"></div><div style="font-size:11px;color:var(--txs);">有限会社うえざと木工</div></div>
+    </div>
+    <div class="fb"><div class="fl">現在のPINコード</div><input type="password" id="pin-cur" maxlength="4" inputmode="numeric" placeholder="● ● ● ●" style="text-align:center;font-size:20px;letter-spacing:.3em;"></div>
+    <div class="fb"><div class="fl">新しいPINコード（4桁）</div><input type="password" id="pin-new" maxlength="4" inputmode="numeric" placeholder="● ● ● ●" style="text-align:center;font-size:20px;letter-spacing:.3em;"></div>
+    <div class="fb"><div class="fl">新しいPINコード（確認）</div><input type="password" id="pin-cfm" maxlength="4" inputmode="numeric" placeholder="● ● ● ●" style="text-align:center;font-size:20px;letter-spacing:.3em;"></div>
+    <div id="pin-msg" style="font-size:12.5px;text-align:center;min-height:18px;margin-bottom:8px;"></div>
+    <button class="btn" style="margin-top:0;" onclick="savePin()">PINコードを変更する</button>
+    <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px;">
+      <button class="btn2" onclick="closePinModal();openLogout();" style="color:var(--clay);border-color:var(--clay-l);">🚪 ログアウト</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ログアウト確認 ===== -->
+<div class="modal-bg" id="logout-modal">
+  <div class="modal" style="text-align:center;">
+    <div style="font-size:28px;margin-bottom:10px;">🚪</div>
+    <div style="font-size:15px;font-weight:700;margin-bottom:8px;">ログアウトしますか？</div>
+    <div style="font-size:12.5px;color:var(--txs);margin-bottom:18px;">再ログインにはお名前とPINコードが必要です</div>
+    <button class="btn" style="margin-top:0;" onclick="doLogout()">ログアウトする</button>
+    <button class="btn2" onclick="closeLogout()">キャンセル</button>
+  </div>
+</div>
+
+<!-- ===== ログイン画面 ===== -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div class="login-logo"><span style="color:#fff;font-size:11px;font-weight:900;font-family:'Shippori Mincho',serif;">Kako</span></div>
+      <div style="font-family:'Shippori Mincho',serif;font-size:20px;font-weight:800;color:var(--g700);">お食事処 Kako 食事補助</div>
+      <div style="font-size:12px;color:var(--txs);margin-top:6px;">うえざと木工 専用ログイン</div>
+    </div>
+    <div class="card">
+      <div class="fb"><div class="fl">お名前を選択</div>
+        <input list="login-names" id="login-name" placeholder="名前を選択または入力して検索">
+        <datalist id="login-names"></datalist>
+      </div>
+      <div class="fb"><div class="fl">PINコード（4桁）</div>
+        <input type="password" id="login-pin" maxlength="4" inputmode="numeric" placeholder="● ● ● ●" style="text-align:center;font-size:24px;letter-spacing:.4em;">
+      </div>
+      <div id="login-err" style="color:var(--clay);font-size:12.5px;text-align:center;min-height:18px;margin-bottom:4px;"></div>
+      <button class="btn" id="login-btn" onclick="doLogin()">ログイン</button>
+    </div>
+    <div style="background:var(--g50);border:1px solid var(--g100);border-radius:12px;padding:12px 14px;margin-top:14px;font-size:12px;color:var(--g700);line-height:1.7;">
+      📌 <b>初回ログインのPINは全員 0000 です</b><br>ログイン後、右上のお名前をタップして変更してください
+    </div>
+    <div class="footer-note">有限会社うえざと木工　／　お食事処 Kako 食事補助システム</div>
+  </div>
+</div>
+
+<script>
+// ===== Supabase 初期化 =====
+const { createClient } = window.supabase;
+const DB = createClient(
+  'https://mfkqpsmfteiolgeqgnfx.supabase.co',
+  'sb_publishable_NV_AQykUo40ReFLWAuYoHQ_9m-Sn_ql'
+);
+
+// ===== 定数 =====
+const HISTORY_URL = 'https://uezato-mokkou.github.io/kako-order/history/';
+const ADMIN_USERS = ['大山 健太', '吉田 悠真', '大盛 俊'];
+const LIMIT_TOTAL = 15000;
+const LIMIT_SUBSIDY = 7500;
+
+const LUNCH_ITEMS = [
+  {name:'八重山そば', price:700, icon:'🍜'},
+  {name:'みそ肉野菜そば', price:800, icon:'🍲'},
+  {name:'ぶっかけそば', price:900, icon:'🍜'},
+  {name:'魚フライ定食', price:1000, icon:'🐟'},
+  {name:'チキンカツ定食', price:1000, icon:'🍗'},
+  {name:'生姜焼き定食', price:1000, icon:'🥩'},
+  {name:'とんかつ定食', price:1100, icon:'🍖'},
+  {name:'タコライス', price:1000, icon:'🌮'},
+  {name:'焼きそば', price:700, icon:'🍝'},
+  {name:'ライス', price:200, icon:'🍚'},
+  {name:'弁当(店頭購入)', price:700, icon:'🍱'},
+  {name:'八重山そば(店頭購入)', price:600, icon:'🍜'},
+];
+const BENTO_ITEMS = [
+  {name:'チキンカツ弁当', price:700, icon:'🍗'},
+  {name:'ゴーヤチャンプルー弁当', price:700, icon:'🥒'},
+  {name:'肉野菜炒め弁当', price:700, icon:'🥘'},
+  {name:'チンジャオロース弁当', price:700, icon:'🫑'},
+  {name:'魚フライ定食(弁当)', price:1000, icon:'🐟'},
+  {name:'生姜焼き定食(弁当)', price:1000, icon:'🥩'},
+  {name:'とんかつ定食(弁当)', price:1100, icon:'🍖'},
+  {name:'タコライス(弁当)', price:1000, icon:'🌮'},
+  {name:'焼きそば定食(弁当)', price:700, icon:'🍝'},
+  {name:'八重山そば(持ち帰り)', price:600, icon:'🍜'},
+];
+
+// ===== 状態 =====
+let curUser = null;
+let isAdmin = false;
+let selectedSet = new Set();
+let bentoSet = new Set();
+let allUsers = [];
+
+// ===== 初期化 =====
+async function init() {
+  updateDate();
+  setInterval(updateDate, 60000);
+  await loadUsers();
+}
+
+function updateDate() {
+  const now = new Date();
+  const days = ['日','月','火','水','木','金','土'];
+  document.getElementById('hdr-date').textContent =
+    `${now.getMonth()+1}月${now.getDate()}日(${days[now.getDay()]})`;
+  const d = `${now.getMonth()+1}/${now.getDate()}(${days[now.getDay()]})分`;
+  const el = document.getElementById('sum-date-badge');
+  if(el) el.textContent = d;
+}
+
+async function loadUsers() {
+  const {data} = await DB.from('kako_users').select('name,is_admin').order('name');
+  if(data) {
+    allUsers = data;
+    const dl = document.getElementById('login-names');
+    dl.innerHTML = data.map(u=>`<option value="${u.name}">`).join('');
+    // 譲渡先リスト
+    const xdl = document.getElementById('xfer-staff-list');
+    if(xdl) xdl.innerHTML = data.map(u=>`<option value="${u.name}">`).join('');
+  }
+}
+
+// ===== ログイン =====
+async function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const pin  = document.getElementById('login-pin').value.trim();
+  const err  = document.getElementById('login-err');
+  err.textContent = '';
+  if(!name){ err.textContent = 'お名前を選択してください'; return; }
+  if(pin.length !== 4){ err.textContent = '4桁のPINコードを入力してください'; return; }
+
+  document.getElementById('login-btn').disabled = true;
+  document.getElementById('login-btn').textContent = '確認中...';
+
+  const {data, error} = await DB.from('kako_users')
+    .select('name,pin,is_admin')
+    .eq('name', name)
+    .single();
+
+  document.getElementById('login-btn').disabled = false;
+  document.getElementById('login-btn').textContent = 'ログイン';
+
+  if(error || !data){ err.textContent = 'ユーザーが見つかりません'; return; }
+  if(data.pin !== pin){ err.textContent = 'PINコードが違います'; return; }
+
+  curUser = data.name;
+  isAdmin = data.is_admin;
+  document.getElementById('login-pin').value = '';
+  document.getElementById('login-screen').style.display = 'none';
+
+  document.getElementById('hdr-name-btn').textContent = curUser + ' ▾';
+  document.getElementById('tb-admin').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('acct-avatar').textContent = curUser.charAt(0);
+  document.getElementById('acct-name').textContent = curUser;
+  document.getElementById('pin-avatar').textContent = curUser.charAt(0);
+  document.getElementById('pin-uname').textContent = curUser;
+
+  renderLunchMenu();
+  renderBentoMenu();
+  await refreshGauge();
+  await loadHistory();
+  await loadBentoSummary();
+  if(isAdmin) await loadAdminData();
+}
+
+function doLogout() {
+  curUser = null; isAdmin = false;
+  selectedSet = new Set(); bentoSet = new Set();
+  closeLogout(); closePinModal();
+  document.getElementById('hdr-name-btn').textContent = '— ▾';
+  document.getElementById('tb-admin').style.display = 'none';
+  document.getElementById('login-name').value = '';
+  document.getElementById('login-screen').style.display = 'block';
+  showTab('order');
+  resetOrder(); resetBento();
+}
+
+// ===== 今月の補助利用額 =====
+async function refreshGauge() {
+  if(!curUser) return;
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+  const from = `${y}-${String(m).padStart(2,'0')}-01`;
+  const to   = new Date(y, m, 1).toISOString();
+
+  const [{data:o},{data:b}] = await Promise.all([
+    DB.from('kako_orders').select('total').eq('user_name',curUser).gte('ordered_at',from).lt('ordered_at',to),
+    DB.from('kako_bento_orders').select('total').eq('user_name',curUser).gte('ordered_at',from).lt('ordered_at',to),
+  ]);
+  const total = [...(o||[]),...(b||[])].reduce((s,r)=>s+r.total,0);
+  const subsidy = Math.min(total, LIMIT_TOTAL) / 2;
+  const pct = Math.min(100, Math.round(subsidy / LIMIT_SUBSIDY * 100));
+  const remain = LIMIT_SUBSIDY - subsidy;
+
+  document.getElementById('gauge-amt').innerHTML = `¥${subsidy.toLocaleString()} <span style="color:var(--txf);font-weight:500;font-size:13px;">/ ¥7,500</span>`;
+  document.getElementById('gauge-fill').style.width = pct + '%';
+  document.getElementById('gauge-remain').textContent = `残り ¥${Math.max(0,remain).toLocaleString()}`;
+  document.getElementById('gauge-pct').textContent = pct + '% 利用中';
+  document.getElementById('acct-usage').textContent = `¥${subsidy.toLocaleString()} / ¥${LIMIT_SUBSIDY.toLocaleString()}`;
+
+  document.getElementById('hist-total').textContent = '¥' + total.toLocaleString();
+  document.getElementById('hist-gauge').style.width = Math.min(100, total/150) + '%';
+}
+
+// ===== 店内注文メニュー =====
+function renderLunchMenu() {
+  document.getElementById('lunch-list').innerHTML = LUNCH_ITEMS.map((it,i)=>{
+    const on = selectedSet.has(i);
+    return `<button class="mi${on?' on':''}" onclick="toggleOrder(${i})">
+      <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
+      <span class="mi-price">¥${it.price.toLocaleString()}</span>
+    </button>`;
+  }).join('');
+  updateOrderTotal();
+}
+
+function toggleOrder(i){ selectedSet.has(i)?selectedSet.delete(i):selectedSet.add(i); renderLunchMenu(); }
+
+function updateOrderTotal() {
+  const arr = [...selectedSet];
+  const total = arr.reduce((s,i)=>s+LUNCH_ITEMS[i].price, 0);
+  document.getElementById('order-total').textContent = '¥' + total.toLocaleString();
+  const el = document.getElementById('order-summary');
+  el.innerHTML = arr.length ? arr.map(i=>LUNCH_ITEMS[i].name+'　¥'+LUNCH_ITEMS[i].price.toLocaleString()).join('<br>') : '未選択';
+  const btn = document.getElementById('order-confirm-btn');
+  btn.disabled = !arr.length;
+  btn.textContent = arr.length ? `この内容で確定する（${arr.length}点）` : '選択してください';
+  if(arr.length) btn.onclick = confirmOrder;
+}
+
+async function confirmOrder() {
+  const arr = [...selectedSet];
+  const items = arr.map(i=>LUNCH_ITEMS[i].name);
+  const total = arr.reduce((s,i)=>s+LUNCH_ITEMS[i].price, 0);
+  const now = new Date();
+  const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const lines = arr.map(i=>`　${LUNCH_ITEMS[i].name}　¥${LUNCH_ITEMS[i].price.toLocaleString()}`).join('\n');
+
+  // Supabase保存
+  await DB.from('kako_orders').insert({user_name:curUser, items, total, order_type:'店内'});
+  await refreshGauge();
+  await loadHistory();
+
+  // 今月累計
+  const {data:all} = await DB.from('kako_orders').select('total').eq('user_name',curUser)
+    .gte('ordered_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString());
+  const {data:ballB} = await DB.from('kako_bento_orders').select('total').eq('user_name',curUser)
+    .gte('ordered_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString());
+  const monthTotal = [...(all||[]),...(ballB||[])].reduce((s,r)=>s+r.total,0);
+
+  const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+  document.getElementById('order-line-msg').textContent = msg;
+  document.getElementById('order-select').style.display = 'none';
+  document.getElementById('order-sent').style.display = 'block';
+
+  // Slack通知
+  sendSlack(msg);
+  // LINE
+  openLine(msg);
+}
+
+function storeConfirm(){
+  document.getElementById('store-ok-btn').style.display='none';
+  document.getElementById('store-ok-box').style.display='flex';
+}
+
+function resetOrder(){
+  selectedSet = new Set();
+  document.getElementById('order-select').style.display='block';
+  document.getElementById('order-sent').style.display='none';
+  document.getElementById('store-ok-btn').style.display='block';
+  document.getElementById('store-ok-box').style.display='none';
+  renderLunchMenu();
+}
+
+// ===== 弁当注文 =====
+function renderBentoMenu() {
+  document.getElementById('bento-list').innerHTML = BENTO_ITEMS.map((it,i)=>{
+    const on = bentoSet.has(i);
+    return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})">
+      <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
+      <span class="mi-price">¥${it.price.toLocaleString()}</span>
+    </button>`;
+  }).join('');
+  updateBentoTotal();
+}
+
+function toggleBento(i){ bentoSet.has(i)?bentoSet.delete(i):bentoSet.add(i); renderBentoMenu(); }
+
+function updateBentoTotal() {
+  const arr = [...bentoSet];
+  const total = arr.reduce((s,i)=>s+BENTO_ITEMS[i].price, 0);
+  document.getElementById('bento-total').textContent = '¥' + total.toLocaleString();
+  const el = document.getElementById('bento-summary');
+  el.innerHTML = arr.length ? arr.map(i=>BENTO_ITEMS[i].name+'　¥'+BENTO_ITEMS[i].price.toLocaleString()).join('<br>') : '未選択';
+  const btn = document.getElementById('bento-confirm-btn');
+  btn.disabled = !arr.length;
+  btn.textContent = arr.length ? `この内容で注文する（${arr.length}点）` : '選択してください';
+  if(arr.length) btn.onclick = confirmBento;
+}
+
+async function confirmBento() {
+  const arr = [...bentoSet];
+  const items = arr.map(i=>BENTO_ITEMS[i].name);
+  const total = arr.reduce((s,i)=>s+BENTO_ITEMS[i].price, 0);
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  await DB.from('kako_bento_orders').insert({user_name:curUser, items, total, order_date:dateStr});
+  await refreshGauge();
+  await loadHistory();
+  await loadBentoSummary();
+
+  document.getElementById('bento-done-text').innerHTML =
+    items.map((n,idx)=>n+'　¥'+BENTO_ITEMS[arr[idx]]?.price?.toLocaleString()).join('<br>') +
+    `<br><b style="color:var(--g700);">合計　¥${total.toLocaleString()}</b>`;
+  document.getElementById('bento-form').style.display='none';
+  document.getElementById('bento-done').style.display='block';
+}
+
+function resetBento(){
+  bentoSet = new Set();
+  document.getElementById('bento-form').style.display='block';
+  document.getElementById('bento-done').style.display='none';
+  renderBentoMenu();
+}
+
+// ===== 弁当集計 =====
+async function loadBentoSummary() {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const {data} = await DB.from('kako_bento_orders').select('user_name,items,total,ordered_at').eq('order_date',today).order('ordered_at');
+  renderBentoSummary(data||[]);
+}
+
+function renderBentoSummary(rows) {
+  document.getElementById('sum-count').innerHTML = `${rows.length}<span style="font-size:12px;font-weight:500;color:var(--txs);">人</span>`;
+  const grand = rows.reduce((s,r)=>s+r.total,0);
+  document.getElementById('sum-total').textContent = '¥'+grand.toLocaleString();
+
+  // 注文リスト
+  document.getElementById('sum-orders-list').innerHTML = rows.length ? rows.map(r=>{
+    const t = new Date(r.ordered_at);
+    const ts = `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`;
+    return `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line);">
+      <div><div style="font-size:13px;font-weight:500;">${r.user_name}</div><div style="font-size:11.5px;color:var(--txf);margin-top:2px;">${r.items.join('・')}</div></div>
+      <div style="text-align:right;flex-shrink:0;margin-left:10px;"><div style="font-size:13px;font-weight:700;color:var(--g700);">¥${r.total.toLocaleString()}</div><div style="font-size:10.5px;color:var(--txf);">${ts}</div></div>
+    </div>`;
+  }).join('') : '<div style="text-align:center;color:var(--txf);font-size:13px;padding:14px 0;">まだ注文がありません</div>';
+
+  // メニュー別集計
+  const mc={};
+  rows.forEach(r=>r.items.forEach(n=>{ mc[n]=(mc[n]||0)+1; }));
+  document.getElementById('sum-menu-count').innerHTML = Object.keys(mc).length ?
+    Object.entries(mc).map(([n,c])=>`<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;"><span>${n}</span><span style="font-weight:700;">${c}個</span></div>`).join('') :
+    '<div style="font-size:12px;color:var(--txf);">なし</div>';
+
+  // LINEメッセージ
+  const now = new Date();
+  const days=['日','月','火','水','木','金','土'];
+  const dateStr=`${now.getMonth()+1}/${now.getDate()}（${days[now.getDay()]}）`;
+  const itemLines = Object.entries(mc).map(([n,c])=>`　${n}　×${c}個`).join('\n');
+  const msg = `【本日のお弁当 注文分】\n${dateStr}\n${itemLines}\n─────────\n合計　¥${grand.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+  document.getElementById('sum-line-msg').textContent = msg;
+}
+
+function sendBentoLine() {
+  const msg = document.getElementById('sum-line-msg').textContent;
+  sendSlack(msg);
+  openLine(msg);
+  document.getElementById('sum-stamp').classList.add('on');
+  document.getElementById('sum-line-card').style.opacity = '.4';
+  document.getElementById('sum-line-card').style.pointerEvents = 'none';
+}
+
+// ===== 履歴 =====
+async function loadHistory() {
+  if(!curUser) return;
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth()-2, 1).toISOString();
+
+  const [{data:o},{data:b}] = await Promise.all([
+    DB.from('kako_orders').select('user_name,items,total,order_type,ordered_at').eq('user_name',curUser).gte('ordered_at',from).order('ordered_at',{ascending:false}).limit(30),
+    DB.from('kako_bento_orders').select('user_name,items,total,order_date,ordered_at').eq('user_name',curUser).gte('ordered_at',from).order('ordered_at',{ascending:false}).limit(30),
+  ]);
+
+  const all = [
+    ...(o||[]).map(r=>({...r,type:r.order_type})),
+    ...(b||[]).map(r=>({...r,type:'弁当'})),
+  ].sort((a,b)=>new Date(b.ordered_at)-new Date(a.ordered_at)).slice(0,30);
+
+  const el = document.getElementById('hist-list');
+  if(!all.length){ el.innerHTML='<div style="text-align:center;color:var(--txf);font-size:13px;padding:20px 0;">まだ利用記録がありません</div>'; return; }
+
+  el.innerHTML = all.map(r=>{
+    const d = new Date(r.ordered_at);
+    const days=['日','月','火','水','木','金','土'];
+    const ds = `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]})`;
+    const names = Array.isArray(r.items) ? r.items.join('・') : r.items;
+    return `<div class="h-row">
+      <div><div class="h-date">${ds}　${r.type}</div><div class="h-name">${names}</div></div>
+      <div class="h-price">¥${r.total.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== 管理者データ =====
+async function loadAdminData() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth()+1;
+  const from = `${y}-${String(m).padStart(2,'0')}-01`;
+  const to   = new Date(y, m, 1).toISOString();
+  document.getElementById('admin-month-label').textContent = `${y}年${m}月　月次管理`;
+
+  const [{data:o},{data:b}] = await Promise.all([
+    DB.from('kako_orders').select('user_name,items,total,order_type,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at',{ascending:false}),
+    DB.from('kako_bento_orders').select('user_name,items,total,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at',{ascending:false}),
+  ]);
+
+  const all = [
+    ...(o||[]).map(r=>({...r,type:r.order_type})),
+    ...(b||[]).map(r=>({...r,type:'弁当'})),
+  ].sort((a,b)=>new Date(b.ordered_at)-new Date(a.ordered_at));
+
+  renderAdminDetail(all);
+  renderAdminSummary(all);
+  renderAdminPayroll(all);
+}
+
+function renderAdminDetail(all) {
+  const byName={};
+  all.forEach(r=>{ if(!byName[r.user_name]) byName[r.user_name]=[]; byName[r.user_name].push(r); });
+  const el = document.getElementById('admin-detail-list');
+  if(!Object.keys(byName).length){ el.innerHTML='<div class="loading">まだデータがありません</div>'; return; }
+  el.innerHTML = Object.entries(byName).map(([name,rows])=>{
+    const pt = rows.reduce((s,r)=>s+r.total,0);
+    const days=['日','月','火','水','木','金','土'];
+    const items = rows.map(r=>{
+      const d=new Date(r.ordered_at);
+      const ds=`${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]})`;
+      return `<div style="font-size:12px;color:var(--txs);padding:2px 0;">${ds}（${r.type}）　${Array.isArray(r.items)?r.items.join('・'):r.items}　<b style="color:var(--tx);">¥${r.total.toLocaleString()}</b></div>`;
+    }).join('');
+    return `<div style="padding:11px 0;border-bottom:1px solid var(--line);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+        <span style="font-size:13.5px;font-weight:700;">${name}</span>
+        <span style="font-size:13px;font-weight:800;font-family:'Shippori Mincho',serif;color:var(--g700);">¥${pt.toLocaleString()}</span>
+      </div>${items}</div>`;
+  }).join('');
+}
+
+function renderAdminSummary(all) {
+  const tot={};
+  all.forEach(r=>{ tot[r.user_name]=(tot[r.user_name]||0)+r.total; });
+  const sorted=Object.entries(tot).sort((a,b)=>b[1]-a[1]);
+  const grand=sorted.reduce((s,[,v])=>s+v,0);
+  document.getElementById('admin-grand').textContent='¥'+grand.toLocaleString();
+  document.getElementById('admin-summary-list').innerHTML = sorted.map(([n,t])=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 2px;border-bottom:1px solid var(--line);">
+      <div><div style="font-size:13.5px;font-weight:500;">${n}</div>
+        <div style="height:5px;background:var(--g100);border-radius:3px;width:${Math.min(200,t/50)}px;margin-top:5px;overflow:hidden;"><div style="height:100%;background:linear-gradient(90deg,var(--g400),var(--g600));border-radius:3px;"></div></div>
+      </div>
+      <div style="font-size:14px;font-weight:800;font-family:'Shippori Mincho',serif;color:var(--g700);">¥${t.toLocaleString()}</div>
+    </div>`).join('');
+}
+
+function renderAdminPayroll(all) {
+  const tot={};
+  all.forEach(r=>{ tot[r.user_name]=(tot[r.user_name]||0)+r.total; });
+  const sorted=Object.entries(tot).sort((a,b)=>b[1]-a[1]);
+  let coTotal=0, ddTotal=0;
+  document.getElementById('admin-payroll-list').innerHTML = sorted.map(([n,t])=>{
+    const co = Math.round(Math.min(t, LIMIT_TOTAL)/2);
+    const dd = t - co;
+    coTotal+=co; ddTotal+=dd;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:12.5px;gap:4px;">
+      <span style="flex:1.5;font-weight:500;">${n}</span>
+      <span style="flex:1;text-align:right;color:var(--txs);">¥${t.toLocaleString()}</span>
+      <span style="flex:1;text-align:right;color:var(--g700);">¥${co.toLocaleString()}</span>
+      <span style="flex:1;text-align:right;color:var(--clay);font-weight:700;">¥${dd.toLocaleString()}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('admin-co').textContent='¥'+coTotal.toLocaleString();
+  document.getElementById('admin-dd').textContent='¥'+ddTotal.toLocaleString();
+}
+
+// ===== タブ切り替え =====
+function showTab(name) {
+  ['order','bento','sum','hist','admin','settings'].forEach(s=>{
+    const sc=document.getElementById('sc-'+s); const tb=document.getElementById('tb-'+s);
+    if(sc) sc.classList.toggle('active',s===name);
+    if(tb && tb.style.display!=='none') tb.classList.toggle('active',s===name);
+  });
+  if(name==='sum') loadBentoSummary();
+  if(name==='hist') { loadHistory(); refreshGauge(); }
+  if(name==='admin' && isAdmin) loadAdminData();
+}
+
+function showAdminSub(name) {
+  ['detail','summary','payroll'].forEach(s=>{
+    document.getElementById('admin-'+s).style.display = s===name?'block':'none';
+    document.getElementById('asb-'+s).classList.toggle('active',s===name);
+  });
+}
+
+// ===== 設定 =====
+function openSet(name){
+  document.getElementById('set-menu').classList.remove('active');
+  document.getElementById('set-'+name).classList.add('active');
+  if(name==='notify'){ document.getElementById('slack-url').value=localStorage.getItem('kako_slack_url')||''; document.getElementById('line-url').value=localStorage.getItem('kako_line_url')||''; }
+}
+function closeSet(){
+  ['account','transfer','notify'].forEach(s=>document.getElementById('set-'+s).classList.remove('active'));
+  document.getElementById('set-menu').classList.add('active');
+}
+function openLogout(){ document.getElementById('logout-modal').classList.add('on'); }
+function closeLogout(){ document.getElementById('logout-modal').classList.remove('on'); }
+
+function saveSlack(){ localStorage.setItem('kako_slack_url', document.getElementById('slack-url').value.trim()); alert('保存しました'); }
+function saveLine(){ localStorage.setItem('kako_line_url', document.getElementById('line-url').value.trim()); alert('保存しました'); }
+
+async function testSlack(){ await sendSlack('【テスト】Kako食事補助システムからの通知テストです'); }
+
+async function sendSlack(msg) {
+  const url = localStorage.getItem('kako_slack_url');
+  if(!url) return;
+  try {
+    await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:msg})});
+  } catch(e) { console.log('Slack送信エラー（CORS）:', e.message); }
+}
+
+function openLine(msg) {
+  const lineUrl = localStorage.getItem('kako_line_url');
+  if(!lineUrl) return;
+  navigator.clipboard.writeText(msg).then(()=>{ window.open(lineUrl,'_blank'); }).catch(()=>{ window.open(lineUrl,'_blank'); });
+}
+
+// ===== 権利譲渡 =====
+function checkXfer(){
+  const t=document.getElementById('xfer-target').value.trim();
+  const btn=document.getElementById('xfer-btn');
+  btn.disabled=!t;
+  btn.textContent=t?'譲渡する':'譲渡する相手を選んでください';
+}
+function doXfer(){
+  const t=document.getElementById('xfer-target').value.trim();
+  const a=document.getElementById('xfer-amt').value;
+  document.getElementById('xfer-done').style.display='flex';
+  document.getElementById('xfer-done').textContent=`✅ ${t}さんへ ${a}食分の権利を譲渡しました（金額は個人間でご清算ください）`;
+}
+
+// ===== PIN設定 =====
+function openPinModal(){
+  if(!curUser) return;
+  document.getElementById('pin-cur').value='';
+  document.getElementById('pin-new').value='';
+  document.getElementById('pin-cfm').value='';
+  document.getElementById('pin-msg').textContent='';
+  document.getElementById('pin-modal').classList.add('on');
+}
+function closePinModal(){ document.getElementById('pin-modal').classList.remove('on'); }
+
+async function savePin(){
+  const cur=document.getElementById('pin-cur').value.trim();
+  const nw=document.getElementById('pin-new').value.trim();
+  const cf=document.getElementById('pin-cfm').value.trim();
+  const msg=document.getElementById('pin-msg');
+
+  const {data} = await DB.from('kako_users').select('pin').eq('name',curUser).single();
+  if(!data||cur!==data.pin){ msg.textContent='現在のPINコードが違います'; msg.style.color='var(--clay)'; return; }
+  if(nw.length!==4){ msg.textContent='新しいPINは4桁で入力してください'; msg.style.color='var(--clay)'; return; }
+  if(nw!==cf){ msg.textContent='確認用PINが一致しません'; msg.style.color='var(--clay)'; return; }
+
+  await DB.from('kako_users').update({pin:nw}).eq('name',curUser);
+  msg.textContent='✅ PINコードを変更しました'; msg.style.color='var(--g700)';
+  setTimeout(closePinModal, 1400);
+}
+
+// ===== 起動 =====
+init();
+</script>
+</body>
+</html>
