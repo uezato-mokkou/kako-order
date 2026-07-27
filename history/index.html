@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>うえざと木工 ご利用履歴 ｜ お食事処 Kako</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--g50:#F4F7EE;--g100:#E6EEDA;--g500:#5C8C3C;--g600:#456B2B;--g700:#33501F;--g900:#1E3010;--clay:#C8662F;--clay-l:#FBE9DD;--clay-d:#9A4A1F;--bg:#FAF8F2;--card:#fff;--line:#E3DECF;--tx:#2B2A22;--txs:#6E6C5C;--txf:#A09E8C;}
+*{box-sizing:border-box;}
+body{margin:0;font-family:"Noto Sans JP",-apple-system,sans-serif;background:var(--bg);color:var(--tx);-webkit-font-smoothing:antialiased;}
+.app{max-width:680px;margin:0 auto;min-height:100vh;}
+.hdr{background:linear-gradient(160deg,var(--g500),var(--g700));color:#fff;padding:22px 20px 18px;position:relative;overflow:hidden;}
+.hdr::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(255,255,255,.10),transparent 70%);border-radius:50%;}
+.hdr-title{font-family:"Shippori Mincho",serif;font-size:18px;font-weight:800;position:relative;z-index:1;}
+.hdr-sub{font-size:11px;opacity:.8;margin-top:5px;position:relative;z-index:1;}
+.live{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:20px;padding:6px 13px;font-size:11.5px;margin-top:12px;position:relative;z-index:1;}
+.pdot{width:6px;height:6px;border-radius:50%;background:#BFE89A;animation:pulse 2s infinite;}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(191,232,154,.5)}70%{box-shadow:0 0 0 6px rgba(191,232,154,0)}100%{box-shadow:0 0 0 0 rgba(191,232,154,0)}}
+.month-bar{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;}
+.month-label{font-family:"Shippori Mincho",serif;font-size:17px;font-weight:800;color:var(--g700);}
+.nav-btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;color:var(--tx);font-family:inherit;}
+.con{padding:16px 18px 40px;}
+.warn{background:var(--clay-l);border:1px solid #F0D2BC;border-radius:12px;padding:12px 15px;font-size:12px;color:var(--clay-d);margin-bottom:16px;line-height:1.7;}
+.day-block{margin-bottom:12px;background:var(--card);border-radius:14px;border:1px solid var(--line);overflow:hidden;}
+.day-head{background:var(--g50);padding:10px 16px;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--g100);}
+.day-date{font-weight:700;font-size:14px;color:var(--g700);}
+.day-total{font-family:"Shippori Mincho",serif;font-weight:800;font-size:15px;color:var(--g700);}
+.day-body{padding:10px 16px 12px;}
+.day-item{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--tx);}
+.day-item .type{font-size:11px;color:var(--txf);margin-left:6px;}
+.mtotal{margin-top:8px;background:var(--g700);color:#fff;border-radius:14px;padding:18px 20px;text-align:center;}
+.mtotal-lbl{font-size:12px;opacity:.8;margin-bottom:6px;}
+.mtotal-amt{font-family:"Shippori Mincho",serif;font-size:28px;font-weight:800;}
+.mtotal-sub{font-size:12px;opacity:.85;margin-top:6px;}
+.loading{text-align:center;color:var(--txf);font-size:13px;padding:40px 0;}
+.footer{text-align:center;font-size:11px;color:var(--txf);padding:24px 0 10px;}
+@media(max-width:480px){.hdr{padding:16px 14px 14px;}.con{padding:14px 14px 32px;}}
+</style>
+</head>
+<body>
+<div class="app">
+<div class="hdr">
+  <div class="hdr-title">お食事処 Kako 様　専用ページ</div>
+  <div class="hdr-sub">うえざと木工 食事補助　ご利用履歴</div>
+  <div class="live"><span class="pdot"></span>リアルタイム反映中</div>
+</div>
+<div class="month-bar">
+  <button class="nav-btn" onclick="prevMonth()">‹ 前月</button>
+  <div class="month-label" id="month-label"></div>
+  <button class="nav-btn" onclick="nextMonth()">翌月 ›</button>
+</div>
+<div class="con">
+  <div class="warn">⚠️ このページの内容、および関連するLINEメッセージは、うえざと木工様との取引記録として保管しております。メッセージの削除は行わないようお願いいたします。</div>
+  <div id="content"><div class="loading">読み込み中...</div></div>
+</div>
+<div class="footer">有限会社うえざと木工　／　お食事処 Kako 食事補助システム</div>
+</div>
+
+<script>
+const { createClient } = window.supabase;
+const DB = createClient(
+  'https://mfkqpsmfteiolgeqgnfx.supabase.co',
+  'sb_publishable_NV_AQykUo40ReFLWAuYoHQ_9m-Sn_ql'
+);
+
+const DAYS = ['日','月','火','水','木','金','土'];
+let curY, curM;
+
+function init() {
+  const now = new Date();
+  curY = now.getFullYear(); curM = now.getMonth()+1;
+  load();
+}
+
+function prevMonth(){ curM--; if(curM<1){curM=12;curY--;} load(); }
+function nextMonth(){ curM++; if(curM>12){curM=1;curY++;} load(); }
+
+async function load() {
+  document.getElementById('month-label').textContent = `${curY}年${curM}月`;
+  document.getElementById('content').innerHTML = '<div class="loading">読み込み中...</div>';
+
+  const from = `${curY}-${String(curM).padStart(2,'0')}-01`;
+  const to   = new Date(curY, curM, 1).toISOString();
+
+  const [{data:orders},{data:bentos}] = await Promise.all([
+    DB.from('kako_orders').select('user_name,items,total,order_type,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at'),
+    DB.from('kako_bento_orders').select('user_name,items,total,order_date,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at'),
+  ]);
+
+  // 日別にグループ化
+  const byDate = {};
+  const addRecord = (r, type) => {
+    const d = type === '弁当' ? r.order_date : r.ordered_at.split('T')[0];
+    if(!byDate[d]) byDate[d] = [];
+    r.items.forEach(name => {
+      if(!byDate[d].find(i=>i.name===name&&i.type===type)) {
+        byDate[d].push({name, type, price:r.total/r.items.length, count:0});
+      }
+      byDate[d].find(i=>i.name===name&&i.type===type).count++;
+    });
+  };
+
+  // 実際は注文ごとにアイテムをカウント
+  const byDate2 = {};
+  [...(orders||[])].forEach(r => {
+    const d = r.ordered_at.split('T')[0];
+    if(!byDate2[d]) byDate2[d] = {items:{},total:0};
+    r.items.forEach(name => { byDate2[d].items[name]=(byDate2[d].items[name]||0)+1; });
+    byDate2[d].total += r.total;
+  });
+  [...(bentos||[])].forEach(r => {
+    const d = r.order_date;
+    if(!byDate2[d]) byDate2[d] = {items:{},total:0};
+    r.items.forEach(name => { byDate2[d].items[name]=(byDate2[d].items[name]||0)+1; });
+    byDate2[d].total += r.total;
+  });
+
+  const dates = Object.keys(byDate2).sort();
+
+  if(!dates.length) {
+    document.getElementById('content').innerHTML = '<div class="loading">この月の記録はありません</div>';
+    return;
+  }
+
+  let grandTotal=0, grandCount=0;
+  let html = '';
+  dates.forEach(d=>{
+    const [y,m,day] = d.split('-').map(Number);
+    const dateObj = new Date(y,m-1,day);
+    const label = `${m}/${day}（${DAYS[dateObj.getDay()]}）`;
+    const {items,total} = byDate2[d];
+    grandTotal += total;
+    const count = Object.values(items).reduce((s,c)=>s+c,0);
+    grandCount += count;
+    const itemRows = Object.entries(items).map(([name,cnt])=>`<div class="day-item"><span>${name}</span><span>×${cnt}個</span></div>`).join('');
+    html += `<div class="day-block">
+      <div class="day-head"><span class="day-date">■ ${label}</span><span class="day-total">¥${total.toLocaleString()}</span></div>
+      <div class="day-body">${itemRows}</div>
+    </div>`;
+  });
+
+  html += `<div class="mtotal">
+    <div class="mtotal-lbl">${curY}年${curM}月　月合計</div>
+    <div class="mtotal-amt">¥${grandTotal.toLocaleString()}</div>
+    <div class="mtotal-sub">${grandCount}個のご注文</div>
+  </div>`;
+
+  document.getElementById('content').innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>
