@@ -464,7 +464,8 @@ const LIMIT_TOTAL = 15000;
 const LIMIT_SUBSIDY = 7500;
 
 const LUNCH_ITEMS = [
-  {name:'八重山そば', price:700, icon:'🍜'},
+  // ─── ランチメニュー ───
+  {name:'八重山そば', price:700, icon:'🍜', section:'🍽 ランチメニュー'},
   {name:'みそ肉野菜そば', price:800, icon:'🍲'},
   {name:'ぶっかけそば', price:900, icon:'🍜'},
   {name:'魚フライ定食', price:1000, icon:'🐟'},
@@ -476,6 +477,17 @@ const LUNCH_ITEMS = [
   {name:'ライス', price:200, icon:'🍚'},
   {name:'弁当(店頭購入)', price:700, icon:'🍱'},
   {name:'八重山そば(店頭購入)', price:600, icon:'🍜'},
+  // ─── 夜の単品メニュー ───
+  {name:'ポテトフライ', price:400, icon:'🍟', section:'🌙 夜の単品メニュー'},
+  {name:'Kakoのひらやーちー', price:400, icon:'🫓'},
+  {name:'鶏の唐揚げ', price:750, icon:'🍗'},
+  {name:'沖縄天ぷら（魚）', price:600, icon:'🦐'},
+  {name:'Kakoのシーザーサラダ', price:800, icon:'🥗'},
+  {name:'今日のチャンプルー', price:700, icon:'🥬'},
+  {name:'Kakoのチキンソテー', price:850, icon:'🍳'},
+  {name:'魚フライ', price:700, icon:'🐟'},
+  {name:'チキンカツ', price:700, icon:'🍗'},
+  {name:'枝豆', price:400, icon:'🫛'},
 ];
 const BENTO_ITEMS = [
   {name:'チキンカツ弁当', price:700, icon:'🍗'},
@@ -612,7 +624,10 @@ async function refreshGauge() {
 function renderLunchMenu() {
   document.getElementById('lunch-list').innerHTML = LUNCH_ITEMS.map((it,i)=>{
     const on = selectedSet.has(i);
-    return `<button class="mi${on?' on':''}" onclick="toggleOrder(${i})">
+    const header = it.section
+      ? `<div style="font-size:12px;font-weight:700;color:var(--txs);padding:10px 2px 6px;display:flex;align-items:center;gap:6px;border-top:${i===0?'none':'1.5px dashed var(--line)'};margin-top:${i===0?'0':'6px'};">${it.section}</div>`
+      : '';
+    return header + `<button class="mi${on?' on':''}" onclick="toggleOrder(${i})">
       <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
       <span class="mi-price">¥${it.price.toLocaleString()}</span>
     </button>`;
