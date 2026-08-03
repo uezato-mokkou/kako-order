@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Supabase JS不要（sbFetch直接API方式に変更済み） -->
 <style>
 :root{
   --g50:#F4F7EE;--g100:#E6EEDA;--g200:#CBDDB1;--g400:#7FA855;
@@ -450,12 +450,71 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
 </div>
 
 <script>
-// ===== Supabase 初期化 =====
-const { createClient } = window.supabase;
-const DB = createClient(
-  'https://mfkqpsmfteiolgeqgnfx.supabase.co',
-  'sb_publishable_NV_AQykUo40ReFLWAuYoHQ_9m-Sn_ql'
-);
+// ===== Supabase 直接API（弁当アプリと同方式） =====
+const SUPABASE_URL = 'https://mfkqpsmfteiolgeqgnfx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NV_AQykUo40ReFLWAuYoHQ_9m-Sn_ql';
+
+async function sbFetch(path, method='GET', body=null){
+  const opts = {
+    method,
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer '+SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method==='POST' ? 'return=representation' : ''
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(SUPABASE_URL+'/rest/v1/'+path, opts);
+  if(!res.ok){ const err=await res.text(); throw new Error('Supabase: '+err); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : [];
+}
+
+// ===== 設定のクラウド保存（弁当アプリと同方式） =====
+async function saveSettingsToCloud(){
+  const slackUrl = document.getElementById('slack-url').value.trim();
+  const lineUrl  = document.getElementById('line-url').value.trim();
+  try {
+    await sbFetch(`kako_settings?key=eq.slack_webhook_url`, 'PATCH', {value: slackUrl});
+    await sbFetch(`kako_settings?key=eq.line_group_url`,    'PATCH', {value: lineUrl});
+    localStorage.setItem('kako_slack_url', slackUrl);
+    localStorage.setItem('kako_line_url',  lineUrl);
+    showToast('設定を保存しました（全端末に反映）');
+  } catch(e) {
+    // Supabase失敗時はlocalStorageのみ
+    localStorage.setItem('kako_slack_url', slackUrl);
+    localStorage.setItem('kako_line_url',  lineUrl);
+    showToast('保存しました（端末のみ）');
+  }
+}
+
+async function loadSettingsFromCloud(){
+  try {
+    const rows = await sbFetch('kako_settings');
+    rows.forEach(r => {
+      if(r.key==='slack_webhook_url' && r.value){
+        localStorage.setItem('kako_slack_url', r.value);
+      }
+      if(r.key==='line_group_url' && r.value){
+        localStorage.setItem('kako_line_url', r.value);
+      }
+    });
+  } catch(e){ console.log('設定クラウド読み込みエラー:', e); }
+}
+
+function showToast(msg){
+  let t = document.getElementById('toast-msg');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toast-msg';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#33501F;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:700;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:opacity .4s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(()=>{ t.style.opacity='0'; }, 2500);
+}
 
 // ===== 定数 =====
 const HISTORY_URL = 'https://uezato-mokkou.github.io/kako-order/history/';
@@ -479,7 +538,7 @@ const LUNCH_ITEMS = [
   {name:'八重山そば(店頭購入)', price:600, icon:'🍜'},
   // ─── 夜の単品メニュー ───
   {name:'ポテトフライ', price:400, icon:'🍟', section:'🌙 夜の単品メニュー'},
-  {name:'Kakoのひらやーちー', price:400, icon:'🫓'},
+  {name:'Kakoのひらやーちー', price:400, icon:'🍕'},
   {name:'鶏の唐揚げ', price:750, icon:'🍗'},
   {name:'沖縄天ぷら（魚）', price:600, icon:'🦐'},
   {name:'Kakoのシーザーサラダ', price:800, icon:'🥗'},
@@ -487,7 +546,7 @@ const LUNCH_ITEMS = [
   {name:'Kakoのチキンソテー', price:850, icon:'🍳'},
   {name:'魚フライ', price:700, icon:'🐟'},
   {name:'チキンカツ', price:700, icon:'🍗'},
-  {name:'枝豆', price:400, icon:'🫛'},
+  {name:'枝豆', price:400, icon:'🫘'},
 ];
 const BENTO_ITEMS = [
   {name:'チキンカツ弁当', price:700, icon:'🍗'},
@@ -527,12 +586,11 @@ function updateDate() {
 }
 
 async function loadUsers() {
-  const {data} = await DB.from('kako_users').select('name,is_admin').order('name');
-  if(data) {
+  const data = await sbFetch('kako_users?select=name,is_admin&order=name.asc');
+  if(data && data.length) {
     allUsers = data;
     const dl = document.getElementById('login-names');
     dl.innerHTML = data.map(u=>`<option value="${u.name}">`).join('');
-    // 譲渡先リスト
     const xdl = document.getElementById('xfer-staff-list');
     if(xdl) xdl.innerHTML = data.map(u=>`<option value="${u.name}">`).join('');
   }
@@ -550,15 +608,13 @@ async function doLogin() {
   document.getElementById('login-btn').disabled = true;
   document.getElementById('login-btn').textContent = '確認中...';
 
-  const {data, error} = await DB.from('kako_users')
-    .select('name,pin,is_admin')
-    .eq('name', name)
-    .single();
+  const rows = await sbFetch(`kako_users?name=eq.${encodeURIComponent(name)}&select=name,pin,is_admin`);
+  const data = rows && rows[0];
 
   document.getElementById('login-btn').disabled = false;
   document.getElementById('login-btn').textContent = 'ログイン';
 
-  if(error || !data){ err.textContent = 'ユーザーが見つかりません'; return; }
+  if(!data){ err.textContent = 'ユーザーが見つかりません'; return; }
   if(data.pin !== pin){ err.textContent = 'PINコードが違います'; return; }
 
   curUser = data.name;
@@ -573,6 +629,7 @@ async function doLogin() {
   document.getElementById('pin-avatar').textContent = curUser.charAt(0);
   document.getElementById('pin-uname').textContent = curUser;
 
+  await loadSettingsFromCloud();
   renderLunchMenu();
   renderBentoMenu();
   await refreshGauge();
@@ -601,9 +658,9 @@ async function refreshGauge() {
   const from = `${y}-${String(m).padStart(2,'0')}-01`;
   const to   = new Date(y, m, 1).toISOString();
 
-  const [{data:o},{data:b}] = await Promise.all([
-    DB.from('kako_orders').select('total').eq('user_name',curUser).gte('ordered_at',from).lt('ordered_at',to),
-    DB.from('kako_bento_orders').select('total').eq('user_name',curUser).gte('ordered_at',from).lt('ordered_at',to),
+  const [o, b] = await Promise.all([
+    sbFetch(`kako_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${from}&ordered_at=lt.${to}`),
+    sbFetch(`kako_bento_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${from}&ordered_at=lt.${to}`),
   ]);
   const total = [...(o||[]),...(b||[])].reduce((s,r)=>s+r.total,0);
   const subsidy = Math.min(total, LIMIT_TOTAL) / 2;
@@ -658,15 +715,16 @@ async function confirmOrder() {
   const lines = arr.map(i=>`　${LUNCH_ITEMS[i].name}　¥${LUNCH_ITEMS[i].price.toLocaleString()}`).join('\n');
 
   // Supabase保存
-  await DB.from('kako_orders').insert({user_name:curUser, items, total, order_type:'店内'});
+  await sbFetch('kako_orders', 'POST', {user_name:curUser, items, total, order_type:'店内'});
   await refreshGauge();
   await loadHistory();
 
   // 今月累計
-  const {data:all} = await DB.from('kako_orders').select('total').eq('user_name',curUser)
-    .gte('ordered_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString());
-  const {data:ballB} = await DB.from('kako_bento_orders').select('total').eq('user_name',curUser)
-    .gte('ordered_at', new Date(now.getFullYear(), now.getMonth(), 1).toISOString());
+  const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const [all, ballB] = await Promise.all([
+    sbFetch(`kako_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${monthFrom}`),
+    sbFetch(`kako_bento_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${monthFrom}`),
+  ]);
   const monthTotal = [...(all||[]),...(ballB||[])].reduce((s,r)=>s+r.total,0);
 
   const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
@@ -727,7 +785,7 @@ async function confirmBento() {
   const now = new Date();
   const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-  await DB.from('kako_bento_orders').insert({user_name:curUser, items, total, order_date:dateStr});
+  await sbFetch('kako_bento_orders', 'POST', {user_name:curUser, items, total, order_date:dateStr});
   await refreshGauge();
   await loadHistory();
   await loadBentoSummary();
@@ -750,7 +808,7 @@ function resetBento(){
 async function loadBentoSummary() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const {data} = await DB.from('kako_bento_orders').select('user_name,items,total,ordered_at').eq('order_date',today).order('ordered_at');
+  const data = await sbFetch(`kako_bento_orders?order_date=eq.${today}&select=user_name,items,total,ordered_at&order=ordered_at.asc`);
   renderBentoSummary(data||[]);
 }
 
@@ -800,9 +858,9 @@ async function loadHistory() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth()-2, 1).toISOString();
 
-  const [{data:o},{data:b}] = await Promise.all([
-    DB.from('kako_orders').select('user_name,items,total,order_type,ordered_at').eq('user_name',curUser).gte('ordered_at',from).order('ordered_at',{ascending:false}).limit(30),
-    DB.from('kako_bento_orders').select('user_name,items,total,order_date,ordered_at').eq('user_name',curUser).gte('ordered_at',from).order('ordered_at',{ascending:false}).limit(30),
+  const [o, b] = await Promise.all([
+    sbFetch(`kako_orders?user_name=eq.${encodeURIComponent(curUser)}&select=user_name,items,total,order_type,ordered_at&ordered_at=gte.${from}&order=ordered_at.desc&limit=30`),
+    sbFetch(`kako_bento_orders?user_name=eq.${encodeURIComponent(curUser)}&select=user_name,items,total,order_date,ordered_at&ordered_at=gte.${from}&order=ordered_at.desc&limit=30`),
   ]);
 
   const all = [
@@ -833,9 +891,9 @@ async function loadAdminData() {
   const to   = new Date(y, m, 1).toISOString();
   document.getElementById('admin-month-label').textContent = `${y}年${m}月　月次管理`;
 
-  const [{data:o},{data:b}] = await Promise.all([
-    DB.from('kako_orders').select('user_name,items,total,order_type,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at',{ascending:false}),
-    DB.from('kako_bento_orders').select('user_name,items,total,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at',{ascending:false}),
+  const [o, b] = await Promise.all([
+    sbFetch(`kako_orders?select=user_name,items,total,order_type,ordered_at&ordered_at=gte.${from}&ordered_at=lt.${to}&order=ordered_at.desc`),
+    sbFetch(`kako_bento_orders?select=user_name,items,total,ordered_at&ordered_at=gte.${from}&ordered_at=lt.${to}&order=ordered_at.desc`),
   ]);
 
   const all = [
@@ -927,7 +985,13 @@ function showAdminSub(name) {
 function openSet(name){
   document.getElementById('set-menu').classList.remove('active');
   document.getElementById('set-'+name).classList.add('active');
-  if(name==='notify'){ document.getElementById('slack-url').value=localStorage.getItem('kako_slack_url')||''; document.getElementById('line-url').value=localStorage.getItem('kako_line_url')||''; }
+  if(name==='notify'){
+    // Supabaseから最新の設定を取得して表示
+    loadSettingsFromCloud().then(()=>{
+      document.getElementById('slack-url').value=localStorage.getItem('kako_slack_url')||'';
+      document.getElementById('line-url').value=localStorage.getItem('kako_line_url')||'';
+    });
+  }
 }
 function closeSet(){
   ['account','transfer','notify'].forEach(s=>document.getElementById('set-'+s).classList.remove('active'));
@@ -936,8 +1000,8 @@ function closeSet(){
 function openLogout(){ document.getElementById('logout-modal').classList.add('on'); }
 function closeLogout(){ document.getElementById('logout-modal').classList.remove('on'); }
 
-function saveSlack(){ localStorage.setItem('kako_slack_url', document.getElementById('slack-url').value.trim()); alert('保存しました'); }
-function saveLine(){ localStorage.setItem('kako_line_url', document.getElementById('line-url').value.trim()); alert('保存しました'); }
+function saveSlack(){ saveSettingsToCloud(); }
+function saveLine(){  saveSettingsToCloud(); }
 
 async function testSlack(){ await sendSlack('【テスト】Kako食事補助システムからの通知テストです'); }
 
@@ -986,12 +1050,13 @@ async function savePin(){
   const cf=document.getElementById('pin-cfm').value.trim();
   const msg=document.getElementById('pin-msg');
 
-  const {data} = await DB.from('kako_users').select('pin').eq('name',curUser).single();
+  const rows = await sbFetch(`kako_users?name=eq.${encodeURIComponent(curUser)}&select=pin`);
+  const data = rows && rows[0];
   if(!data||cur!==data.pin){ msg.textContent='現在のPINコードが違います'; msg.style.color='var(--clay)'; return; }
   if(nw.length!==4){ msg.textContent='新しいPINは4桁で入力してください'; msg.style.color='var(--clay)'; return; }
   if(nw!==cf){ msg.textContent='確認用PINが一致しません'; msg.style.color='var(--clay)'; return; }
 
-  await DB.from('kako_users').update({pin:nw}).eq('name',curUser);
+  await sbFetch(`kako_users?name=eq.${encodeURIComponent(curUser)}`, 'PATCH', {pin:nw});
   msg.textContent='✅ PINコードを変更しました'; msg.style.color='var(--g700)';
   setTimeout(closePinModal, 1400);
 }
