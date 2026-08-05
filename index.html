@@ -862,11 +862,10 @@ async function refreshGauge() {
 
 // ===== 店内注文メニュー =====
 function renderLunchMenu() {
-  // ランチと夜に分割
-  const lunchItems   = LUNCH_ITEMS.filter(it => !it.section || it.section.includes('ランチ'));
-  const dinnerItems  = LUNCH_ITEMS.filter(it => it.section && it.section.includes('夜'));
-  const lunchStart   = 0;
-  const dinnerStart  = lunchItems.length;
+  // 夜メニューの開始インデックスを特定してランチと夜に分割
+  const dinnerStartIdx = LUNCH_ITEMS.findIndex(it => it.section && it.section.includes('夜'));
+  const lunchItems  = dinnerStartIdx >= 0 ? LUNCH_ITEMS.slice(0, dinnerStartIdx) : LUNCH_ITEMS;
+  const dinnerItems = dinnerStartIdx >= 0 ? LUNCH_ITEMS.slice(dinnerStartIdx)    : [];
 
   const lunchHtml = `
     <div style="margin-bottom:16px;">
@@ -874,7 +873,7 @@ function renderLunchMenu() {
         🍽 ランチメニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">11:00〜14:00</span>
       </div>
       ${lunchItems.map((it,i)=>{
-        const idx = lunchStart + i;
+        const idx = i;
         const on  = selectedSet.has(idx);
         return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #E89020;background:${on?'#FFF8EE':'#FFFBF5'};">
           <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
@@ -889,7 +888,7 @@ function renderLunchMenu() {
         🌙 夜の単品メニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">17:00〜21:30</span>
       </div>
       ${dinnerItems.map((it,i)=>{
-        const idx = dinnerStart + i;
+        const idx = dinnerStartIdx + i;
         const on  = selectedSet.has(idx);
         return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #4A6AAA;background:${on?'#EEF2FF':'#F7F8FC'};">
           <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
