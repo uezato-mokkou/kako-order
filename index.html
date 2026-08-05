@@ -875,9 +875,13 @@ function renderLunchMenu() {
       ${lunchItems.map((it,i)=>{
         const idx = i;
         const on  = selectedSet.has(idx);
-        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #E89020;background:${on?'#FFF8EE':'#FFFBF5'};">
-          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
-          <span class="mi-price" style="color:#A05000;">¥${it.price.toLocaleString()}</span>
+        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #E89020;background:${on?'#FFE0B2':'#FFFBF5'};border-color:${on?'#E89020':'#F0E0C8'};">
+          <span class="mi-left">
+            <span class="cb" style="background:${on?'#E89020':'transparent'};border-color:${on?'#E89020':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
+            <span class="mi-icon">${it.icon}</span>
+            <span class="mi-name" style="color:${on?'#7A3800':'var(--tx)'};font-weight:${on?'700':'500'};">${it.name}</span>
+          </span>
+          <span class="mi-price" style="color:#A05000;font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
         </button>`;
       }).join('')}
     </div>`;
@@ -890,9 +894,13 @@ function renderLunchMenu() {
       ${dinnerItems.map((it,i)=>{
         const idx = dinnerStartIdx + i;
         const on  = selectedSet.has(idx);
-        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #4A6AAA;background:${on?'#EEF2FF':'#F7F8FC'};">
-          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
-          <span class="mi-price" style="color:#2C3E6B;">¥${it.price.toLocaleString()}</span>
+        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #4A6AAA;background:${on?'#C5D8F0':'#F7F8FC'};border-color:${on?'#4A6AAA':'#D0D8E8'};">
+          <span class="mi-left">
+            <span class="cb" style="background:${on?'#2C3E6B':'transparent'};border-color:${on?'#2C3E6B':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
+            <span class="mi-icon">${it.icon}</span>
+            <span class="mi-name" style="color:${on?'#1A2848':'var(--tx)'};font-weight:${on?'700':'500'};">${it.name}</span>
+          </span>
+          <span class="mi-price" style="color:#2C3E6B;font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
         </button>`;
       }).join('')}
     </div>`;
@@ -1002,9 +1010,13 @@ function renderBentoMenu() {
       </div>
       ${weeklyItems.map((it,i)=>{
         const on=bentoSet.has(i);
-        return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})" style="border-left:4px solid var(--g500);background:${on?'var(--g50)':'#F2F8EE'};">
-          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name" style="font-weight:700;">${it.name}</span></span>
-          <span class="mi-price" style="color:var(--g700);">¥${it.price.toLocaleString()}</span>
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})" style="border-left:4px solid var(--g500);background:${on?'#B8DFA0':'#F2F8EE'};border-color:${on?'var(--g500)':'#C8E4B0'};">
+          <span class="mi-left">
+            <span class="cb" style="background:${on?'var(--g600)':'transparent'};border-color:${on?'var(--g600)':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
+            <span class="mi-icon">${it.icon}</span>
+            <span class="mi-name" style="color:${on?'var(--g700)':'var(--tx)'};font-weight:700;">${it.name}</span>
+          </span>
+          <span class="mi-price" style="color:var(--g700);font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
         </button>`;
       }).join('')}
     </div>` : '';
@@ -1018,9 +1030,13 @@ function renderBentoMenu() {
       ${fixedItems.map((it,i)=>{
         const idx = weeklyItems.length + i;
         const on = bentoSet.has(idx);
-        return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})" style="border-left:4px solid #999;background:${on?'#F0F0F0':'#FAFAFA'};">
-          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
-          <span class="mi-price">¥${it.price.toLocaleString()}</span>
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})" style="border-left:4px solid #999;background:${on?'#D0D8E0':'#FAFAFA'};border-color:${on?'#777':'#DDD'};">
+          <span class="mi-left">
+            <span class="cb" style="background:${on?'#555':'transparent'};border-color:${on?'#555':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
+            <span class="mi-icon">${it.icon}</span>
+            <span class="mi-name" style="color:${on?'#222':'var(--tx)'};font-weight:${on?'700':'500'};">${it.name}</span>
+          </span>
+          <span class="mi-price" style="font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
         </button>`;
       }).join('')}
     </div>`;
