@@ -958,10 +958,9 @@ function renderBentoMenu() {
     preview.style.display='none';
   }
 
-  // メニューリスト（曜日メニュー + 固定メニューをセクション分け）
+  // メニューリスト（曜日メニュー・固定メニューをセクション分け）
   const weeklyItems = KAKO_WEEKLY_BENTO[bentoTargetDate().getDay()]||[];
   const fixedItems  = KAKO_FIXED_BENTO;
-  const allItems    = [...weeklyItems, ...fixedItems];
 
   if(!weeklyItems.length && bentoTargetDate().getDay()===0){
     document.getElementById('bento-list').innerHTML='<div style="text-align:center;color:var(--txf);padding:20px 0;font-size:13px;">本日は定休日のため注文できません</div>';
@@ -970,25 +969,35 @@ function renderBentoMenu() {
   }
 
   const weeklyHtml = weeklyItems.length ? `
-    <div style="font-size:11px;font-weight:700;color:var(--txs);margin:0 0 8px;letter-spacing:.05em;">🗓 本日の日替わり（${dowLabel}）</div>
-    ${weeklyItems.map((it,i)=>{
-      const on=bentoSet.has(i);
-      return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})">
-        <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
-        <span class="mi-price">¥${it.price.toLocaleString()}</span>
-      </button>`;
-    }).join('')}` : '';
+    <div style="background:linear-gradient(135deg,#E8F5E0,#D4EDBB);border:1.5px solid var(--g400);border-radius:14px;padding:12px 12px 6px;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:var(--g700);margin-bottom:10px;display:flex;align-items:center;gap:5px;">
+        🗓 本日の日替わり（${dowLabel}）
+        <span style="background:var(--g600);color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;">本日限定</span>
+      </div>
+      ${weeklyItems.map((it,i)=>{
+        const on=bentoSet.has(i);
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})" style="margin-bottom:6px;border-color:${on?'var(--g500)':'var(--g200)'};background:${on?'var(--g50)':'#fff'};">
+          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name" style="font-weight:700;">${it.name}</span></span>
+          <span class="mi-price">¥${it.price.toLocaleString()}</span>
+        </button>`;
+      }).join('')}
+    </div>` : '';
 
   const fixedHtml = `
-    <div style="font-size:11px;font-weight:700;color:var(--txs);margin:${weeklyItems.length?'14px':0} 0 8px;letter-spacing:.05em;">📋 固定メニュー（毎日）</div>
-    ${fixedItems.map((it,i)=>{
-      const idx = weeklyItems.length + i;
-      const on = bentoSet.has(idx);
-      return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})">
-        <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
-        <span class="mi-price">¥${it.price.toLocaleString()}</span>
-      </button>`;
-    }).join('')}`;
+    <div style="background:#F8F8F8;border:1.5px solid #E0E0E0;border-radius:14px;padding:12px 12px 6px;">
+      <div style="font-size:11px;font-weight:700;color:var(--txs);margin-bottom:10px;display:flex;align-items:center;gap:5px;">
+        📋 固定メニュー
+        <span style="background:#999;color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;">毎日注文可</span>
+      </div>
+      ${fixedItems.map((it,i)=>{
+        const idx = weeklyItems.length + i;
+        const on = bentoSet.has(idx);
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})" style="margin-bottom:6px;">
+          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
+          <span class="mi-price">¥${it.price.toLocaleString()}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
 
   document.getElementById('bento-list').innerHTML = weeklyHtml + fixedHtml;
   updateBentoTotal();
