@@ -235,9 +235,15 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
 <!-- ===== 弁当注文 ===== -->
 <div class="screen" id="sc-bento">
   <div class="card" id="bento-form">
+    <!-- 翌日プレビュー -->
+    <div id="bento-tomorrow-preview" style="background:linear-gradient(135deg,#FFF8F0,#FEF0E0);border:1.5px solid #F4C89A;border-radius:12px;padding:10px 13px;margin-bottom:14px;display:none;">
+      <div style="font-size:11px;font-weight:700;color:#C86020;margin-bottom:5px;">🌅 明日のメニュー（参考）</div>
+      <div id="bento-tomorrow-items" style="display:flex;gap:7px;flex-wrap:wrap;"></div>
+    </div>
+    <!-- タイトル -->
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div class="sec" style="margin-bottom:0;"><span class="dot"></span>翌日のお弁当を事前注文</div>
-      <span style="font-size:11px;background:var(--clay-l);color:var(--clay-d);padding:5px 11px;border-radius:20px;font-weight:700;">⏰ 9:00締切</span>
+      <div class="sec" style="margin-bottom:0;"><span class="dot"></span><span id="bento-form-title">本日のお弁当を注文</span></div>
+      <span id="bento-cutoff-badge" style="font-size:11px;background:var(--clay-l);color:var(--clay-d);padding:5px 11px;border-radius:20px;font-weight:700;">⏰ 14:00切替</span>
     </div>
     <div id="bento-list"></div>
     <div class="sum-box">
@@ -658,18 +664,39 @@ const LUNCH_ITEMS = [
   {name:'チキンカツ', price:700, icon:'🍗'},
   {name:'枝豆', price:400, icon:'🌿'},
 ];
-const BENTO_ITEMS = [
-  {name:'チキンカツ弁当', price:700, icon:'🍗'},
-  {name:'ゴーヤチャンプルー弁当', price:700, icon:'🥒'},
-  {name:'肉野菜炒め弁当', price:700, icon:'🥘'},
-  {name:'チンジャオロース弁当', price:700, icon:'🫑'},
-  {name:'魚フライ定食(弁当)', price:1000, icon:'🐟'},
-  {name:'生姜焼き定食(弁当)', price:1000, icon:'🥩'},
-  {name:'とんかつ定食(弁当)', price:1100, icon:'🍖'},
-  {name:'タコライス(弁当)', price:1000, icon:'🌮'},
-  {name:'焼きそば定食(弁当)', price:700, icon:'🍝'},
-  {name:'八重山そば(持ち帰り)', price:600, icon:'🍜'},
-];
+// 曜日固定弁当メニュー（1=月〜6=土、0=日）
+const KAKO_WEEKLY_BENTO = {
+  1:[{name:'生姜焼き弁当',              price:700, icon:'🥩'},{name:'鶏の甘酢あん弁当',          price:700, icon:'🍗'}],
+  2:[{name:'豚スタミナ弁当',             price:700, icon:'🥓'},{name:'チキン南蛮弁当',             price:700, icon:'🍗'}],
+  3:[{name:'ホイコーロー弁当',           price:700, icon:'🥦'},{name:'ふーorゴーヤチャンプル弁当', price:700, icon:'🌿'}],
+  4:[{name:'豚黒コショウ弁当',           price:700, icon:'🌶'},{name:'チンジャオロース弁当',       price:700, icon:'🥩'}],
+  5:[{name:'酢豚弁当',                  price:700, icon:'🍖'},{name:'鶏と青菜と卵弁当',          price:700, icon:'🥗'}],
+  6:[{name:'肉野菜炒め弁当',             price:700, icon:'🥘'},{name:'白身魚甘酢あん弁当',        price:700, icon:'🐟'}],
+  0:[], // 日曜定休
+};
+const DOW_JA=['日','月','火','水','木','金','土'];
+
+// 注文対象日（14時以降は翌日）
+function bentoTargetDate(){
+  const d = new Date();
+  const target = new Date(d);
+  if(d.getHours()>=14) target.setDate(target.getDate()+1);
+  // 日曜はスキップ
+  while(target.getDay()===0) target.setDate(target.getDate()+1);
+  return target;
+}
+// 翌営業日（日曜スキップ）
+function bentoNextDate(base){
+  const d = new Date(base);
+  d.setDate(d.getDate()+1);
+  while(d.getDay()===0) d.setDate(d.getDate()+1);
+  return d;
+}
+function getTodayBentoItems(){ return KAKO_WEEKLY_BENTO[bentoTargetDate().getDay()]||[]; }
+function getTomorrowBentoItems(){ return KAKO_WEEKLY_BENTO[bentoNextDate(bentoTargetDate()).getDay()]||[]; }
+
+// 後方互換（既存コードが参照）
+const BENTO_ITEMS = [];
 
 // ===== 状態 =====
 let curUser = null;
@@ -901,7 +928,33 @@ function resetOrder(){
 
 // ===== 弁当注文 =====
 function renderBentoMenu() {
-  document.getElementById('bento-list').innerHTML = BENTO_ITEMS.map((it,i)=>{
+  const target = bentoTargetDate();
+  const dow = target.getDay();
+  const isAfter14 = new Date().getHours()>=14;
+  const items = getTodayBentoItems();
+  const dowLabel = DOW_JA[dow]+'曜日';
+
+  // タイトル・バッジ更新
+  const titleEl = document.getElementById('bento-form-title');
+  if(titleEl) titleEl.textContent = (isAfter14?'翌日':'本日')+'のお弁当（'+dowLabel+'）';
+
+  // 翌日プレビュー
+  const preview = document.getElementById('bento-tomorrow-preview');
+  const previewItems = document.getElementById('bento-tomorrow-items');
+  const tmr = getTomorrowBentoItems();
+  const tmrDate = bentoNextDate(target);
+  if(preview && previewItems && tmr.length){
+    previewItems.innerHTML = tmr.map(it=>`<span style="font-size:12px;background:white;border:1px solid #F4C89A;border-radius:7px;padding:2px 9px;color:#5A3010;">${it.icon} ${it.name}</span>`).join('');
+    preview.style.display='block';
+  }
+
+  // メニューリスト
+  if(!items.length){
+    document.getElementById('bento-list').innerHTML='<div style="text-align:center;color:var(--txf);padding:20px 0;font-size:13px;">本日は定休日のため注文できません</div>';
+    updateBentoTotal();
+    return;
+  }
+  document.getElementById('bento-list').innerHTML = items.map((it,i)=>{
     const on = bentoSet.has(i);
     return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})">
       <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
@@ -915,10 +968,11 @@ function toggleBento(i){ bentoSet.has(i)?bentoSet.delete(i):bentoSet.add(i); ren
 
 function updateBentoTotal() {
   const arr = [...bentoSet];
-  const total = arr.reduce((s,i)=>s+BENTO_ITEMS[i].price, 0);
+  const items = getTodayBentoItems();
+  const total = arr.reduce((s,i)=>s+(items[i]?.price||0), 0);
   document.getElementById('bento-total').textContent = '¥' + total.toLocaleString();
   const el = document.getElementById('bento-summary');
-  el.innerHTML = arr.length ? arr.map(i=>BENTO_ITEMS[i].name+'　¥'+BENTO_ITEMS[i].price.toLocaleString()).join('<br>') : '未選択';
+  el.innerHTML = arr.length ? arr.map(i=>(items[i]?.name||'')+'　¥'+(items[i]?.price||0).toLocaleString()).join('<br>') : '未選択';
   const btn = document.getElementById('bento-confirm-btn');
   btn.disabled = !arr.length;
   btn.textContent = arr.length ? `この内容で注文する（${arr.length}点）` : '選択してください';
@@ -927,10 +981,11 @@ function updateBentoTotal() {
 
 async function confirmBento() {
   const arr = [...bentoSet];
-  const items = arr.map(i=>BENTO_ITEMS[i].name);
-  const total = arr.reduce((s,i)=>s+BENTO_ITEMS[i].price, 0);
-  const now = new Date();
-  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const menuItems = getTodayBentoItems();
+  const items = arr.map(i=>menuItems[i]?.name||'');
+  const total = arr.reduce((s,i)=>s+(menuItems[i]?.price||0), 0);
+  const target = bentoTargetDate(); // 注文対象日（14時以降は翌日）
+  const dateStr = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
 
   await sbFetch('kako_bento_orders', 'POST', {user_name:curUser, items, total, order_date:dateStr});
   await refreshGauge();
@@ -938,7 +993,7 @@ async function confirmBento() {
   await loadBentoSummary();
 
   document.getElementById('bento-done-text').innerHTML =
-    items.map((n,idx)=>n+'　¥'+BENTO_ITEMS[arr[idx]]?.price?.toLocaleString()).join('<br>') +
+    items.map((n,idx)=>n+'　¥'+(menuItems[arr[idx]]?.price||0).toLocaleString()).join('<br>') +
     `<br><b style="color:var(--g700);">合計　¥${total.toLocaleString()}</b>`;
   document.getElementById('bento-form').style.display='none';
   document.getElementById('bento-done').style.display='block';
