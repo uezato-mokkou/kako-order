@@ -862,16 +862,43 @@ async function refreshGauge() {
 
 // ===== 店内注文メニュー =====
 function renderLunchMenu() {
-  document.getElementById('lunch-list').innerHTML = LUNCH_ITEMS.map((it,i)=>{
-    const on = selectedSet.has(i);
-    const header = it.section
-      ? `<div style="font-size:12px;font-weight:700;color:var(--txs);padding:10px 2px 6px;display:flex;align-items:center;gap:6px;border-top:${i===0?'none':'1.5px dashed var(--line)'};margin-top:${i===0?'0':'6px'};">${it.section}</div>`
-      : '';
-    return header + `<button class="mi${on?' on':''}" onclick="toggleOrder(${i})">
-      <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
-      <span class="mi-price">¥${it.price.toLocaleString()}</span>
-    </button>`;
-  }).join('');
+  // ランチと夜に分割
+  const lunchItems   = LUNCH_ITEMS.filter(it => !it.section || it.section.includes('ランチ'));
+  const dinnerItems  = LUNCH_ITEMS.filter(it => it.section && it.section.includes('夜'));
+  const lunchStart   = 0;
+  const dinnerStart  = lunchItems.length;
+
+  const lunchHtml = `
+    <div style="margin-bottom:16px;">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#D4770A;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
+        🍽 ランチメニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">11:00〜14:00</span>
+      </div>
+      ${lunchItems.map((it,i)=>{
+        const idx = lunchStart + i;
+        const on  = selectedSet.has(idx);
+        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #E89020;background:${on?'#FFF8EE':'#FFFBF5'};">
+          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
+          <span class="mi-price" style="color:#A05000;">¥${it.price.toLocaleString()}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
+
+  const dinnerHtml = `
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#2C3E6B;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
+        🌙 夜の単品メニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">17:00〜21:30</span>
+      </div>
+      ${dinnerItems.map((it,i)=>{
+        const idx = dinnerStart + i;
+        const on  = selectedSet.has(idx);
+        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #4A6AAA;background:${on?'#EEF2FF':'#F7F8FC'};">
+          <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
+          <span class="mi-price" style="color:#2C3E6B;">¥${it.price.toLocaleString()}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
+
+  document.getElementById('lunch-list').innerHTML = lunchHtml + dinnerHtml;
   updateOrderTotal();
 }
 
