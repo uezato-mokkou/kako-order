@@ -968,31 +968,31 @@ function renderBentoMenu() {
     return;
   }
 
+  // 日替わりセクション（緑系）
   const weeklyHtml = weeklyItems.length ? `
-    <div style="background:linear-gradient(135deg,#E8F5E0,#D4EDBB);border:1.5px solid var(--g400);border-radius:14px;padding:12px 12px 6px;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:var(--g700);margin-bottom:10px;display:flex;align-items:center;gap:5px;">
-        🗓 本日の日替わり（${dowLabel}）
-        <span style="background:var(--g600);color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;">本日限定</span>
+    <div style="margin-bottom:16px;">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:var(--g700);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
+        🗓 本日の日替わり（${dowLabel}）<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">本日限定</span>
       </div>
       ${weeklyItems.map((it,i)=>{
         const on=bentoSet.has(i);
-        return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})" style="margin-bottom:6px;border-color:${on?'var(--g500)':'var(--g200)'};background:${on?'var(--g50)':'#fff'};">
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${i})" style="border-left:4px solid var(--g500);background:${on?'var(--g50)':'#F2F8EE'};">
           <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name" style="font-weight:700;">${it.name}</span></span>
-          <span class="mi-price">¥${it.price.toLocaleString()}</span>
+          <span class="mi-price" style="color:var(--g700);">¥${it.price.toLocaleString()}</span>
         </button>`;
       }).join('')}
     </div>` : '';
 
+  // 固定メニューセクション（グレー系）
   const fixedHtml = `
-    <div style="background:#F8F8F8;border:1.5px solid #E0E0E0;border-radius:14px;padding:12px 12px 6px;">
-      <div style="font-size:11px;font-weight:700;color:var(--txs);margin-bottom:10px;display:flex;align-items:center;gap:5px;">
-        📋 固定メニュー
-        <span style="background:#999;color:#fff;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:4px;">毎日注文可</span>
+    <div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#666;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
+        📋 固定メニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">毎日OK</span>
       </div>
       ${fixedItems.map((it,i)=>{
         const idx = weeklyItems.length + i;
         const on = bentoSet.has(idx);
-        return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})" style="margin-bottom:6px;">
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})" style="border-left:4px solid #999;background:${on?'#F0F0F0':'#FAFAFA'};">
           <span class="mi-left"><span class="cb">${on?'✓':''}</span><span class="mi-icon">${it.icon}</span><span class="mi-name">${it.name}</span></span>
           <span class="mi-price">¥${it.price.toLocaleString()}</span>
         </button>`;
