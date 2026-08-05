@@ -1232,15 +1232,17 @@ async function loadHistory() {
     const ds = `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]})`;
     const names = Array.isArray(r.items) ? r.items.join('・') : r.items;
     const isBento = r.type === '弁当';
-    const editBtn = isBento ? `<button onclick="editBentoOrder('${r.id}','${r.order_date}',${JSON.stringify(r.items).replace(/"/g,'&quot;')})" style="font-size:11px;padding:4px 10px;background:#1A6DB5;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-right:4px;">✏️ 編集</button>` : '';
-    const delBtn  = isBento ? `<button onclick="deleteBentoOrder('${r.id}')" style="font-size:11px;padding:4px 10px;background:#C84040;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑 削除</button>` : '';
-    return `<div class="h-row" style="align-items:flex-start;">
+    const editBtn  = isBento ? `<button onclick="editBentoOrder('${r.id}','${r.order_date}',${JSON.stringify(r.items).replace(/"/g,'&quot;')})" style="display:block;width:64px;padding:6px 0;background:#1A6DB5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;margin-bottom:5px;">✏️ 編集</button>` : '';
+    const delBtn   = isBento ? `<button onclick="deleteBentoOrder('${r.id}')" style="display:block;width:64px;padding:6px 0;background:transparent;color:#C84040;border:1.5px solid #C84040;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">🗑 取消</button>` : '';
+    return `<div class="h-row" style="align-items:flex-start;gap:10px;">
       <div style="flex:1;">
         <div class="h-date">${ds}　${r.type}</div>
         <div class="h-name">${names}</div>
-        ${isBento ? `<div style="margin-top:6px;">${editBtn}${delBtn}</div>` : ''}
       </div>
-      <div class="h-price">¥${r.total.toLocaleString()}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;">
+        <div class="h-price" style="margin-bottom:6px;">¥${r.total.toLocaleString()}</div>
+        ${isBento ? editBtn + delBtn : ''}
+      </div>
     </div>`;
   }).join('');
 }
