@@ -811,6 +811,9 @@ async function doLogin(isAuto=false) {
   await loadBentoSummary();
   if(isAdmin) await loadAdminData();
 
+  // 13時前で本日の弁当注文済みなら弁当タブを完了状態で表示
+  restoreBentoDoneIfNeeded();
+
   // 初回ログイン（PIN=0000）の場合はPIN変更モーダルを表示
   if(pin === '0000' && !localStorage.getItem('kako_pin_set_' + curUser)){
     setTimeout(()=>{ openFirstPinModal(); }, 500);
@@ -1073,14 +1076,44 @@ async function confirmBento() {
   await loadHistory();
   await loadBentoSummary();
 
-  document.getElementById('bento-done-text').innerHTML =
-    items.map((n,idx)=>n+'　¥'+(menuItems[arr[idx]]?.price||0).toLocaleString()).join('<br>') +
+  const doneHtml = items.map((n,idx)=>n+'　¥'+(menuItems[arr[idx]]?.price||0).toLocaleString()).join('<br>') +
     `<br><b style="color:var(--g700);">合計　¥${total.toLocaleString()}</b>`;
+
+  // 注文完了状態をlocalStorageに保存（13時まで表示維持）
+  const storageKey = `kako_bento_done_${curUser}_${dateStr}`;
+  localStorage.setItem(storageKey, JSON.stringify({html: doneHtml, savedAt: Date.now()}));
+
+  showBentoDone(doneHtml);
+}
+
+function showBentoDone(html) {
+  document.getElementById('bento-done-text').innerHTML = html;
   document.getElementById('bento-form').style.display='none';
   document.getElementById('bento-done').style.display='block';
 }
 
+// 弁当タブ表示時に保存済み完了状態を復元（13時まで）
+function restoreBentoDoneIfNeeded() {
+  const now = new Date();
+  // 13時以降はリセット（新たに注文可能）
+  if(now.getHours() >= 13) return false;
+  const target = bentoTargetDate();
+  const dateStr = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
+  const storageKey = `kako_bento_done_${curUser}_${dateStr}`;
+  const saved = localStorage.getItem(storageKey);
+  if(!saved) return false;
+  try {
+    const {html} = JSON.parse(saved);
+    showBentoDone(html);
+    return true;
+  } catch(e) { return false; }
+}
+
 function resetBento(){
+  // 完了状態のlocalStorageをクリア（もう一度選べるようにする）
+  const target = bentoTargetDate();
+  const dateStr = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
+  localStorage.removeItem(`kako_bento_done_${curUser}_${dateStr}`);
   bentoSet = new Set();
   document.getElementById('bento-form').style.display='block';
   document.getElementById('bento-done').style.display='none';
@@ -1253,6 +1286,7 @@ function showTab(name) {
     if(sc) sc.classList.toggle('active',s===name);
     if(tb && tb.style.display!=='none') tb.classList.toggle('active',s===name);
   });
+  if(name==='bento') restoreBentoDoneIfNeeded(); // 13時前なら完了画面を復元
   if(name==='sum') loadBentoSummary();
   if(name==='hist') { loadHistory(); refreshGauge(); }
   if(name==='admin' && isAdmin) loadAdminData();
