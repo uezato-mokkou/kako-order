@@ -1120,11 +1120,49 @@ function resetBento(){
   renderBentoMenu();
 }
 
+// ===== 弁当注文の削除・編集 =====
+async function deleteBentoOrder(id) {
+  if(!confirm('この弁当注文を削除しますか？')) return;
+  try {
+    await sbFetch(`kako_bento_orders?id=eq.${id}`, 'DELETE');
+    showToast('弁当注文を削除しました');
+    await loadHistory();
+    await loadBentoSummary();
+    await refreshGauge();
+  } catch(e) {
+    showToast('削除に失敗しました');
+  }
+}
+
+async function editBentoOrder(id, orderDate, items) {
+  // 削除してから弁当注文タブを開き再選択させる
+  if(!confirm('注文を編集するため、一度削除して再注文します。よろしいですか？')) return;
+  try {
+    await sbFetch(`kako_bento_orders?id=eq.${id}`, 'DELETE');
+    // localStorageの完了状態もリセット
+    const target = bentoTargetDate();
+    const dateStr = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
+    localStorage.removeItem(`kako_bento_done_${curUser}_${dateStr}`);
+    await loadBentoSummary();
+    await refreshGauge();
+    // 弁当タブを開いて再注文
+    bentoSet = new Set();
+    document.getElementById('bento-form').style.display='block';
+    document.getElementById('bento-done').style.display='none';
+    renderBentoMenu();
+    showTab('bento');
+    showToast('注文を削除しました。内容を選び直して再注文してください');
+  } catch(e) {
+    showToast('編集に失敗しました');
+  }
+}
+
 // ===== 弁当集計 =====
 async function loadBentoSummary() {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-  const data = await sbFetch(`kako_bento_orders?order_date=eq.${today}&select=user_name,items,total,ordered_at&order=ordered_at.asc`);
+  // 弁当集計は注文対象日（14時以降は翌日）の注文を表示
+  const target = bentoTargetDate();
+  const targetDate = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
+  const data = await sbFetch(`kako_bento_orders?order_date=eq.${targetDate}&select=id,user_name,items,total,ordered_at&order=ordered_at.asc`);
   renderBentoSummary(data||[]);
 }
 
@@ -1177,7 +1215,7 @@ async function loadHistory() {
 
   const [o, b] = await Promise.all([
     sbFetch(`kako_orders?user_name=eq.${encodeURIComponent(curUser)}&select=user_name,items,total,order_type,ordered_at&ordered_at=gte.${from}&order=ordered_at.desc&limit=30`),
-    sbFetch(`kako_bento_orders?user_name=eq.${encodeURIComponent(curUser)}&select=user_name,items,total,order_date,ordered_at&ordered_at=gte.${from}&order=ordered_at.desc&limit=30`),
+    sbFetch(`kako_bento_orders?user_name=eq.${encodeURIComponent(curUser)}&select=id,user_name,items,total,order_date,ordered_at&ordered_at=gte.${from}&order=ordered_at.desc&limit=30`),
   ]);
 
   const all = [
@@ -1193,8 +1231,15 @@ async function loadHistory() {
     const days=['日','月','火','水','木','金','土'];
     const ds = `${d.getMonth()+1}/${d.getDate()}(${days[d.getDay()]})`;
     const names = Array.isArray(r.items) ? r.items.join('・') : r.items;
-    return `<div class="h-row">
-      <div><div class="h-date">${ds}　${r.type}</div><div class="h-name">${names}</div></div>
+    const isBento = r.type === '弁当';
+    const editBtn = isBento ? `<button onclick="editBentoOrder('${r.id}','${r.order_date}',${JSON.stringify(r.items).replace(/"/g,'&quot;')})" style="font-size:11px;padding:4px 10px;background:#1A6DB5;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-right:4px;">✏️ 編集</button>` : '';
+    const delBtn  = isBento ? `<button onclick="deleteBentoOrder('${r.id}')" style="font-size:11px;padding:4px 10px;background:#C84040;color:#fff;border:none;border-radius:8px;cursor:pointer;">🗑 削除</button>` : '';
+    return `<div class="h-row" style="align-items:flex-start;">
+      <div style="flex:1;">
+        <div class="h-date">${ds}　${r.type}</div>
+        <div class="h-name">${names}</div>
+        ${isBento ? `<div style="margin-top:6px;">${editBtn}${delBtn}</div>` : ''}
+      </div>
       <div class="h-price">¥${r.total.toLocaleString()}</div>
     </div>`;
   }).join('');
