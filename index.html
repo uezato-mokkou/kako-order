@@ -1407,8 +1407,8 @@ async function openLine(msg) {
   } catch(e) {
     // クリップボードが使えない場合もLINEは開く
   }
-  // モバイル対応：location.hrefで確実に開く
-  window.location.href = lineUrl;
+  // 別タブで開く（KAKOアプリから離れないようにする）
+  window.open(lineUrl, '_blank');
 }
 
 // ===== 権利譲渡 =====
