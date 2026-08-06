@@ -1385,10 +1385,30 @@ async function sendSlack(msg) {
   } catch(e) { console.log('Slack送信エラー:', e.message); }
 }
 
-function openLine(msg) {
-  const lineUrl = localStorage.getItem('kako_line_url');
-  if(!lineUrl) return;
-  navigator.clipboard.writeText(msg).then(()=>{ window.open(lineUrl,'_blank'); }).catch(()=>{ window.open(lineUrl,'_blank'); });
+async function openLine(msg) {
+  // localStorageから取得、なければSupabaseから取得
+  let lineUrl = localStorage.getItem('kako_line_url');
+  if(!lineUrl) {
+    try {
+      const rows = await sbFetch('kako_settings?key=eq.line_group_url&select=value');
+      if(rows && rows[0] && rows[0].value) {
+        lineUrl = rows[0].value;
+        localStorage.setItem('kako_line_url', lineUrl);
+      }
+    } catch(e) {}
+  }
+  if(!lineUrl) {
+    showToast('⚠️ 設定タブでLINEグループURLを保存してください');
+    return;
+  }
+  // メッセージをクリップボードにコピーしてLINEを開く
+  try {
+    await navigator.clipboard.writeText(msg);
+  } catch(e) {
+    // クリップボードが使えない場合もLINEは開く
+  }
+  // モバイル対応：location.hrefで確実に開く
+  window.location.href = lineUrl;
 }
 
 // ===== 権利譲渡 =====
