@@ -1375,8 +1375,14 @@ async function sendSlack(msg) {
   const url = localStorage.getItem('kako_slack_url');
   if(!url) return;
   try {
-    await fetch(url, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:msg})});
-  } catch(e) { console.log('Slack送信エラー（CORS）:', e.message); }
+    // no-corsモードでCORSエラーを回避（Slack webhookはtext/plainも受け付ける）
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify({text: msg})
+    });
+  } catch(e) { console.log('Slack送信エラー:', e.message); }
 }
 
 function openLine(msg) {
