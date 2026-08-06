@@ -1163,11 +1163,27 @@ async function editBentoOrder(id, orderDate, items) {
 
 // ===== 弁当集計 =====
 async function loadBentoSummary() {
-  // 弁当集計は注文対象日（14時以降は翌日）の注文を表示
   const target = bentoTargetDate();
   const targetDate = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
   const data = await sbFetch(`kako_bento_orders?order_date=eq.${targetDate}&select=id,user_name,items,total,ordered_at&order=ordered_at.asc`);
   renderBentoSummary(data||[]);
+
+  // 送信済み状態をSupabaseから確認（全員に反映）
+  try {
+    const rows = await sbFetch('kako_settings?key=eq.bento_sent_date&select=value');
+    const sentDate = rows && rows[0] ? rows[0].value : null;
+    const stamp = document.getElementById('sum-stamp');
+    const card  = document.getElementById('sum-line-card');
+    if(sentDate === targetDate) {
+      // 送信済み：スタンプ表示・送信ボタン無効化
+      stamp?.classList.add('on');
+      if(card) { card.style.opacity = '.4'; card.style.pointerEvents = 'none'; }
+    } else {
+      // 未送信：元に戻す
+      stamp?.classList.remove('on');
+      if(card) { card.style.opacity = '1'; card.style.pointerEvents = 'auto'; }
+    }
+  } catch(e) { console.log('送信状態確認エラー:', e); }
 }
 
 function renderBentoSummary(rows) {
@@ -1212,7 +1228,10 @@ function sendBentoLine() {
       const target = bentoTargetDate();
       const dateStr = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
       await sbFetch(`kako_bento_orders?order_date=eq.${dateStr}`, 'PATCH', {sent: true});
-      await loadHistory(); // 履歴を更新してボタンを非表示
+      // 送信日をkako_settingsに保存（全員の画面に反映するため）
+      await sbFetch('kako_settings?key=eq.bento_sent_date', 'PATCH', {value: dateStr});
+      await loadHistory();
+      await loadBentoSummary(); // スタンプを更新
     } catch(e) { console.error('sent更新エラー:', e); }
   });
   document.getElementById('sum-stamp').classList.add('on');
