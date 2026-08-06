@@ -932,12 +932,18 @@ async function confirmOrder() {
   const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
   const lines = arr.map(i=>`　${LUNCH_ITEMS[i].name}　¥${LUNCH_ITEMS[i].price.toLocaleString()}`).join('\n');
 
+  const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+
+  // 確認ダイアログ
+  const preview = items.join('・') + `\n合計 ¥${total.toLocaleString()}`;
+  if(!confirm(`この内容で確定してLINEグループに送信してもよろしいですか？\n\n${preview}`)) return;
+
   // Supabase保存
   await sbFetch('kako_orders', 'POST', {user_name:curUser, items, total, order_type:'店内'});
   await refreshGauge();
   await loadHistory();
 
-  // 今月累計
+  // 今月累計（msg更新のため再計算）
   const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const [all, ballB] = await Promise.all([
     sbFetch(`kako_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${monthFrom}`),
@@ -945,15 +951,15 @@ async function confirmOrder() {
   ]);
   const monthTotal = [...(all||[]),...(ballB||[])].reduce((s,r)=>s+r.total,0);
 
-  const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
-  document.getElementById('order-line-msg').textContent = msg;
+  const finalMsg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+
+  document.getElementById('order-line-msg').textContent = finalMsg;
   document.getElementById('order-select').style.display = 'none';
   document.getElementById('order-sent').style.display = 'block';
 
-  // Slack通知
-  sendSlack(msg);
-  // LINE
-  openLine(msg);
+  // Slack通知 & LINE自動送信
+  sendSlack(finalMsg);
+  sendLineMessage(finalMsg);
 }
 
 function storeConfirm(){
@@ -1198,8 +1204,9 @@ function renderBentoSummary(rows) {
 
 function sendBentoLine() {
   const msg = document.getElementById('sum-line-msg').textContent;
+  if(!confirm('この内容をLINEグループに送信してもよろしいですか？\n\n' + msg.substring(0,100) + '...')) return;
   sendSlack(msg);
-  openLine(msg);
+  sendLineMessage(msg);
   document.getElementById('sum-stamp').classList.add('on');
   document.getElementById('sum-line-card').style.opacity = '.4';
   document.getElementById('sum-line-card').style.pointerEvents = 'none';
@@ -1385,31 +1392,46 @@ async function sendSlack(msg) {
   } catch(e) { console.log('Slack送信エラー:', e.message); }
 }
 
-async function openLine(msg) {
-  // localStorageから取得、なければSupabaseから取得
-  let lineUrl = localStorage.getItem('kako_line_url');
-  if(!lineUrl) {
-    try {
-      const rows = await sbFetch('kako_settings?key=eq.line_group_url&select=value');
-      if(rows && rows[0] && rows[0].value) {
-        lineUrl = rows[0].value;
-        localStorage.setItem('kako_line_url', lineUrl);
-      }
-    } catch(e) {}
-  }
-  if(!lineUrl) {
-    showToast('⚠️ 設定タブでLINEグループURLを保存してください');
-    return;
-  }
-  // メッセージをクリップボードにコピーしてLINEを開く
+// LINE自動送信（Edge Function経由）
+async function sendLineMessage(msg) {
   try {
-    await navigator.clipboard.writeText(msg);
+    // グループIDをSupabaseから取得
+    let groupId = localStorage.getItem('kako_line_group_id');
+    if(!groupId) {
+      const rows = await sbFetch('kako_settings?key=eq.line_group_id&select=value');
+      if(rows && rows[0] && rows[0].value) {
+        groupId = rows[0].value;
+        localStorage.setItem('kako_line_group_id', groupId);
+      }
+    }
+    if(!groupId) {
+      showToast('⚠️ LINEグループIDが取得できていません');
+      return;
+    }
+    // Edge Functionに送信
+    const res = await fetch('https://mfkqpsmfteiolgeqgnfx.supabase.co/functions/v1/line-webhook', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': 'sb_publishable_NV_AQykUo40ReFLWAuYoHQ_9m-Sn_ql'
+      },
+      body: JSON.stringify({ message: msg, groupId })
+    });
+    if(res.ok) {
+      showToast('✅ LINEグループに送信しました');
+    } else {
+      const err = await res.json();
+      console.error('LINE送信エラー:', err);
+      showToast('⚠️ LINE送信に失敗しました');
+    }
   } catch(e) {
-    // クリップボードが使えない場合もLINEは開く
+    console.error('LINE送信例外:', e);
+    showToast('⚠️ LINE送信に失敗しました');
   }
-  // 別タブで開く（KAKOアプリから離れないようにする）
-  window.open(lineUrl, '_blank');
 }
+
+// 後方互換（旧コードから呼ばれる場合）
+async function openLine(msg) { await sendLineMessage(msg); }
 
 // ===== 権利譲渡 =====
 function checkXfer(){
