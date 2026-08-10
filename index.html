@@ -677,9 +677,18 @@ const KAKO_WEEKLY_BENTO = {
 
 // 毎日注文できる固定メニュー
 const KAKO_FIXED_BENTO = [
-  {name:'魚フライ弁当',           price:700, icon:'🐟'},
-  {name:'チキンカツ弁当',         price:700, icon:'🍗'},
-  {name:'炒め物揚げ物ミックス弁当', price:700, icon:'🍱'},
+  {name:'魚フライ弁当',           price:700,  icon:'🐟'},
+  {name:'チキンカツ弁当',         price:700,  icon:'🍗'},
+  {name:'炒め物揚げ物ミックス弁当', price:700,  icon:'🍱'},
+];
+
+// テイクアウト定食メニュー（固定）
+const KAKO_TAKEOUT_BENTO = [
+  {name:'魚フライ定食',   price:1000, icon:'🐟'},
+  {name:'チキンカツ定食', price:1000, icon:'🍗'},
+  {name:'生姜焼き定食',   price:1000, icon:'🥩'},
+  {name:'とんかつ定食',   price:1100, icon:'🍖'},
+  {name:'タコライス',     price:1000, icon:'🌮'},
 ];
 const DOW_JA=['日','月','火','水','木','金','土'];
 
@@ -699,8 +708,8 @@ function bentoNextDate(base){
   while(d.getDay()===0) d.setDate(d.getDate()+1);
   return d;
 }
-function getTodayBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoTargetDate().getDay()]||[]), ...KAKO_FIXED_BENTO]; }
-function getTomorrowBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoNextDate(bentoTargetDate()).getDay()]||[]), ...KAKO_FIXED_BENTO]; }
+function getTodayBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoTargetDate().getDay()]||[]), ...KAKO_FIXED_BENTO, ...KAKO_TAKEOUT_BENTO]; }
+function getTomorrowBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoNextDate(bentoTargetDate()).getDay()]||[]), ...KAKO_FIXED_BENTO, ...KAKO_TAKEOUT_BENTO]; }
 
 // 後方互換（既存コードが参照）
 const BENTO_ITEMS = [];
@@ -1048,7 +1057,28 @@ function renderBentoMenu() {
       }).join('')}
     </div>`;
 
-  document.getElementById('bento-list').innerHTML = weeklyHtml + fixedHtml;
+  // テイクアウト定食セクション（赤系）
+  const takeoutItems = KAKO_TAKEOUT_BENTO;
+  const takeoutHtml = `
+    <div style="margin-top:14px;">
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#8B1A1A;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
+        🍽 テイクアウト定食<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">店内受取</span>
+      </div>
+      ${takeoutItems.map((it,i)=>{
+        const idx = weeklyItems.length + fixedItems.length + i;
+        const on = bentoSet.has(idx);
+        return `<button class="mi${on?' on':''}" onclick="toggleBento(${idx})" style="border-left:4px solid #C0392B;background:${on?'#FADBD8':'#FEF5F5'};border-color:${on?'#C0392B':'#F5B7B1'};">
+          <span class="mi-left">
+            <span class="cb" style="background:${on?'#C0392B':'transparent'};border-color:${on?'#C0392B':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
+            <span class="mi-icon">${it.icon}</span>
+            <span class="mi-name" style="color:${on?'#7B241C':'var(--tx)'};font-weight:${on?'700':'500'};">${it.name}</span>
+          </span>
+          <span class="mi-price" style="color:#C0392B;font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
+        </button>`;
+      }).join('')}
+    </div>`;
+
+  document.getElementById('bento-list').innerHTML = weeklyHtml + fixedHtml + takeoutHtml;
   updateBentoTotal();
 }
 
