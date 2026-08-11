@@ -153,6 +153,15 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
 .name-search-box{position:relative;}
 .name-search-input{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font-family:'Noto Sans JP',sans-serif;outline:none;background:var(--bg);}
 .name-search-input:focus{border-color:var(--g500);}
+.bento-float-btn{
+  display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+  background:var(--g600);color:#fff;border:none;border-radius:28px;
+  padding:14px 28px;font-size:15px;font-weight:700;cursor:pointer;
+  box-shadow:0 4px 20px rgba(51,80,31,.45);z-index:200;
+  white-space:nowrap;min-width:220px;text-align:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.bento-float-btn.visible{display:block;}
 .login-name-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:2px solid var(--g500);border-radius:12px;box-shadow:0 8px 24px rgba(51,80,31,.18);z-index:300;max-height:220px;overflow-y:auto;display:none;}
 .login-name-dropdown.open{display:block;}
 .login-name-opt{padding:11px 14px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--line);transition:background .15s;display:flex;align-items:center;justify-content:space-between;}
@@ -445,6 +454,18 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
 </div>
 
 <!-- ===== 初回PIN設定モーダル ===== -->
+<!-- ===== 弁当注文確認モーダル ===== -->
+<div id="bento-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:90;align-items:center;justify-content:center;padding:20px;">
+  <div class="modal" style="text-align:left;max-width:320px;width:100%;">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px;">🛒 注文内容の確認</div>
+    <div id="bento-confirm-preview" style="font-size:13px;color:var(--txs);background:var(--g50);border-radius:10px;padding:10px 12px;margin-bottom:14px;line-height:1.7;"></div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn2" style="flex:1;" onclick="closeBentoConfirmModal()">キャンセル</button>
+      <button class="btn" style="flex:1;" onclick="executeBentoOrder()">OK・送信</button>
+    </div>
+  </div>
+</div>
+
 <div id="first-pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:80;display:none;align-items:center;justify-content:center;padding:20px;">
   <div class="modal" style="text-align:center;">
     <div style="font-size:28px;margin-bottom:10px;">🔐</div>
@@ -1095,6 +1116,16 @@ function updateBentoTotal() {
   btn.disabled = !arr.length;
   btn.textContent = arr.length ? `この内容で注文する（${arr.length}点）` : '選択してください';
   if(arr.length) btn.onclick = confirmBento;
+  // フローティングボタンの表示制御
+  const floatBtn = document.getElementById('bento-float-btn');
+  if(floatBtn) {
+    if(arr.length) {
+      floatBtn.classList.add('visible');
+      floatBtn.textContent = '✅ この内容で注文する（' + arr.length + '点）';
+    } else {
+      floatBtn.classList.remove('visible');
+    }
+  }
 }
 
 async function confirmBento() {
@@ -1124,6 +1155,8 @@ function showBentoDone(html) {
   document.getElementById('bento-done-text').innerHTML = html;
   document.getElementById('bento-form').style.display='none';
   document.getElementById('bento-done').style.display='block';
+  const fb = document.getElementById('bento-float-btn');
+  if(fb) fb.classList.remove('visible');
 }
 
 // 弁当タブ表示時に保存済み完了状態を復元（13時まで）
@@ -1144,13 +1177,14 @@ function restoreBentoDoneIfNeeded() {
 }
 
 function resetBento(){
-  // 完了状態のlocalStorageをクリア（もう一度選べるようにする）
   const target = bentoTargetDate();
   const dateStr = `${target.getFullYear()}-${String(target.getMonth()+1).padStart(2,'0')}-${String(target.getDate()).padStart(2,'0')}`;
   localStorage.removeItem(`kako_bento_done_${curUser}_${dateStr}`);
   bentoSet = new Set();
   document.getElementById('bento-form').style.display='block';
   document.getElementById('bento-done').style.display='none';
+  const fb = document.getElementById('bento-float-btn');
+  if(fb) fb.classList.remove('visible');
   renderBentoMenu();
 }
 
