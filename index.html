@@ -30,7 +30,7 @@ html,body{margin:0;font-family:"Noto Sans JP",-apple-system,sans-serif;backgroun
 .app{max-width:760px;margin:0 auto;min-height:100vh;background:var(--bg);}
 
 /* Header */
-.hdr{background:linear-gradient(160deg,var(--g500),var(--g700));color:#fff;padding:18px 20px 16px;position:relative;overflow:hidden;}
+.hdr{background:linear-gradient(160deg,var(--g500),var(--g700));color:#fff;padding:18px 20px 16px;position:sticky;top:0;z-index:40;overflow:hidden;}
 .hdr::before{content:"";position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(255,255,255,.10),transparent 70%);border-radius:50%;}
 .hdr-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;position:relative;z-index:1;}
 .hdr-title{font-family:"Shippori Mincho",serif;font-size:19px;font-weight:800;display:flex;align-items:center;gap:9px;}
@@ -44,7 +44,7 @@ html,body{margin:0;font-family:"Noto Sans JP",-apple-system,sans-serif;backgroun
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(191,232,154,.5)}70%{box-shadow:0 0 0 6px rgba(191,232,154,0)}100%{box-shadow:0 0 0 0 rgba(191,232,154,0)}}
 
 /* Tabs */
-.tab-wrap{padding:14px 14px 0;}
+.tab-wrap{padding:14px 14px 0;position:sticky;top:0;z-index:39;background:var(--bg);}
 .tab-bar{display:flex;gap:3px;background:var(--card);border-radius:14px;padding:5px;box-shadow:var(--sh2);margin-bottom:14px;}
 .tb{flex:1;border:none;background:transparent;padding:9px 2px 8px;border-radius:10px;font-size:9.5px;color:var(--txf);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit;font-weight:500;transition:all .2s;white-space:nowrap;}
 .tb-icon{font-size:16px;line-height:1;}
@@ -169,7 +169,7 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
 .login-name-opt:hover{background:var(--g50);}
 .login-name-opt .kana{font-size:11px;color:var(--txs);}
 
-@media(max-width:480px){.hdr{padding:16px 14px 14px;}.tab-wrap{padding:12px 12px 0;}.con{padding:0 12px 28px;}}
+@media(max-width:480px){.hdr{padding:16px 14px 14px;}.tab-wrap{padding:12px 12px 0;}.con{padding:0 12px 80px;}}
 @media(min-width:760px){.app{box-shadow:0 0 40px rgba(0,0,0,.04);}}
 </style>
 </head>
