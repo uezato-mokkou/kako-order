@@ -488,11 +488,28 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
       <div style="font-size:15px;font-weight:800;">アカウント情報</div>
       <div style="width:40px;"></div>
     </div>
-    <div style="display:flex;align-items:center;gap:14px;background:var(--g50);border-radius:11px;padding:12px 14px;margin-bottom:16px;">
-      <div id="acct-avatar" style="width:48px;height:48px;border-radius:50%;background:var(--g100);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:var(--g700);font-family:'Shippori Mincho',serif;flex-shrink:0;"></div>
-      <div><div id="acct-name" style="font-size:15px;font-weight:700;"></div><div style="font-size:12px;color:var(--txs);margin-top:1px;">有限会社うえざと木工</div></div>
+    <!-- アバター＋名前 -->
+    <div style="display:flex;align-items:center;gap:14px;background:var(--g50);border-radius:11px;padding:12px 14px;margin-bottom:14px;">
+      <div id="ai-avatar" style="width:48px;height:48px;border-radius:50%;background:var(--g200);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--g700);font-family:'Shippori Mincho',serif;flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div id="ai-name-display" style="font-size:16px;font-weight:700;margin-bottom:2px;"></div>
+        <div style="font-size:11px;color:var(--txs);">有限会社うえざと木工</div>
+      </div>
     </div>
-    <div class="fb"><div class="fl">今月の補助利用額</div><div style="font-size:14px;font-weight:500;" id="acct-usage">¥0 / ¥7,500</div></div>
+    <!-- 補助利用額 -->
+    <div style="background:#F0F7EC;border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:600;color:var(--g700);">今月の補助利用額</span>
+      <span id="ai-usage" style="font-size:14px;font-weight:700;color:var(--g700);">¥0 / ¥7,500</span>
+    </div>
+    <!-- 名前編集 -->
+    <div style="background:#F8F9FA;border-radius:10px;padding:12px 14px;">
+      <div style="font-size:12px;font-weight:700;color:var(--txs);margin-bottom:8px;">表示名の変更</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="ai-name-input" placeholder="新しい名前を入力" style="flex:1;padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);font-size:14px;font-family:inherit;">
+        <button onclick="saveAccountName()" style="padding:8px 14px;background:var(--g600);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;">保存</button>
+      </div>
+      <div id="ai-name-msg" style="font-size:12px;min-height:16px;margin-top:6px;text-align:center;"></div>
+    </div>
   </div>
 </div>
 
@@ -1830,9 +1847,43 @@ function closePinModal(){
 }
 
 function openAccountInfo(){
+  // アバター・名前・補助利用額をセット
+  const el_avatar  = document.getElementById('ai-avatar');
+  const el_name    = document.getElementById('ai-name-display');
+  const el_input   = document.getElementById('ai-name-input');
+  const el_usage   = document.getElementById('ai-usage');
+  const el_msg     = document.getElementById('ai-name-msg');
+  if(el_avatar)  el_avatar.textContent  = curUser ? curUser.charAt(0) : '?';
+  if(el_name)    el_name.textContent    = curUser || '';
+  if(el_input)   el_input.value         = curUser || '';
+  if(el_msg)     el_msg.textContent     = '';
   const gaugeAmt = document.getElementById('gauge-amt');
-  if(gaugeAmt) document.getElementById('acct-usage').textContent = gaugeAmt.textContent;
+  if(el_usage && gaugeAmt) el_usage.textContent = gaugeAmt.textContent;
   document.getElementById('account-info-modal').classList.add('on');
+}
+
+async function saveAccountName(){
+  const input = document.getElementById('ai-name-input');
+  const msg   = document.getElementById('ai-name-msg');
+  const newName = input ? input.value.trim() : '';
+  if(!newName){ msg.textContent='名前を入力してください'; msg.style.color='var(--clay)'; return; }
+  if(newName === curUser){ msg.textContent='現在の名前と同じです'; msg.style.color='var(--txf)'; return; }
+  msg.textContent='保存中...'; msg.style.color='var(--txf)';
+  try{
+    await sbFetch(`kako_users?name=eq.${encodeURIComponent(curUser)}`, 'PATCH', {name: newName});
+    // ローカルの名前を更新
+    const session = JSON.parse(localStorage.getItem('kako_session')||'{}');
+    session.name = newName;
+    localStorage.setItem('kako_session', JSON.stringify(session));
+    curUser = newName;
+    document.getElementById('hdr-name-btn').textContent = curUser + ' ▾';
+    document.getElementById('pin-uname').textContent = curUser;
+    document.getElementById('ai-name-display').textContent = curUser;
+    document.getElementById('ai-avatar').textContent = curUser.charAt(0);
+    msg.textContent='✅ 名前を変更しました'; msg.style.color='var(--g700)';
+  } catch(e){
+    msg.textContent='保存に失敗しました'; msg.style.color='var(--clay)';
+  }
 }
 function closeAccountInfo(){
   document.getElementById('account-info-modal').classList.remove('on');
