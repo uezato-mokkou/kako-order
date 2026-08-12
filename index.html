@@ -1200,7 +1200,7 @@ function renderLunchMenu() {
           const sz = e.size;
           const btnS = (size, label, extra) =>
             `<button onclick="sobaSetSize(${i},${j},'${size}')" style="padding:4px 8px;border-radius:14px;border:1.5px solid ${sz===size&&!e.isSet?st.border:'#ccc'};background:${sz===size&&!e.isSet?st.selBg:'#fff'};font-size:11px;font-weight:${sz===size&&!e.isSet?'700':'400'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${label}${extra}</button>`;
-          const setBtn = `<button onclick="sobaToggleSet(${i},${j})" style="padding:4px 8px;border-radius:14px;border:1.5px solid ${e.isSet?'#1A7A4A':'#ccc'};background:${e.isSet?'#D5F5E3':'#fff'};font-size:11px;font-weight:${e.isSet?'700':'400'};color:${e.isSet?'#1A7A4A':'var(--txf)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${e.isSet?'✓まんぷく':'まんぷく'}</button>`;
+          const setBtn = `<button onclick="sobaToggleSet(${i},${j})" style="padding:4px 8px;border-radius:14px;border:1.5px solid ${e.isSet?'#1A7A4A':'#ccc'};background:${e.isSet?'#D5F5E3':'#fff'};font-size:11px;font-weight:${e.isSet?'700':'500'};color:${e.isSet?'#1A7A4A':'var(--tx)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${e.isSet?'✓まんぷく':'まんぷく'}</button>`;
           return `
             <div style="margin-top:8px;padding:8px 10px;background:#F7F7F7;border-radius:10px;border:1px solid #E0E0E0;">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px;">
@@ -1362,7 +1362,17 @@ function renderBentoMenu() {
   // タイトル・バッジ更新
   const open = isBentoOpen();
   const titleEl = document.getElementById('bento-form-title');
-  if(titleEl) titleEl.textContent = dowLabel+'のお弁当を注文';
+  if(titleEl){
+    const dow = target.getDay();
+    const today = new Date();
+    const todayDow = today.getDay();
+    // 翌日（明日）かどうかを確認
+    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+    const isTomorrow = target.toDateString() === tomorrow.toDateString();
+    titleEl.textContent = isTomorrow
+      ? '明日（' + dowLabel + '）のお弁当の注文'
+      : dowLabel + 'のお弁当の注文';
+  }
 
   const badge = document.getElementById('bento-cutoff-badge');
   if(badge){
