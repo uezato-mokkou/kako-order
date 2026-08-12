@@ -1662,9 +1662,13 @@ function renderBentoSummary(rows) {
   const now = new Date();
   const days=['日','月','火','水','木','金','土'];
   const dateStr=`${now.getMonth()+1}/${now.getDate()}（${days[now.getDay()]}）`;
+  // 注文対象日（明日）の曜日
+  const target = bentoTargetDate();
+  const targetDow = days[target.getDay()];
+  const targetDateStr = `${target.getMonth()+1}/${target.getDate()}（${targetDow}）`;
   const itemLines = Object.entries(mc).map(([n,c])=>`　${n}　×${c}個`).join('\n');
   const totalCount = Object.values(mc).reduce((s,c)=>s+c, 0);
-  const msg = `【本日のお弁当 注文分】\n${dateStr}\n${itemLines}\n─────────\n合計 ${totalCount}個　¥${grand.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+  const msg = `【明日（${targetDow}曜日）のお弁当 注文分】\n${targetDateStr}\n${itemLines}\n─────────\n合計 ${totalCount}個　¥${grand.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
   document.getElementById('sum-line-msg').textContent = msg;
 }
 
