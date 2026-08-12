@@ -906,7 +906,7 @@ async function doLogin(isAuto=false) {
 
   document.getElementById('hdr-name-btn').textContent = curUser + ' ▾';
   document.getElementById('tb-admin').style.display = isAdmin ? 'flex' : 'none';
-  document.getElementById('tb-settings').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('tb-settings').style.display = 'none';
   document.getElementById('acct-avatar').textContent = curUser.charAt(0);
   document.getElementById('acct-name').textContent = curUser;
   document.getElementById('pin-avatar').textContent = curUser.charAt(0);
