@@ -1810,8 +1810,47 @@ function doXfer(){
   document.getElementById('xfer-done').textContent=`✅ ${t}さんへ ${a}食分の権利を譲渡しました（金額は個人間でご清算ください）`;
 }
 
+// ===== アカウントメニュー =====
+function openAccountMenu(){
+  if(!curUser) return;
+  // 補助利用額をメニューヘッダーに反映
+  const gaugeAmt = document.getElementById('gauge-amt');
+  const menuUsage = document.getElementById('acct-usage-menu');
+  if(menuUsage && gaugeAmt) menuUsage.textContent = '今月補助: ' + gaugeAmt.textContent;
+  document.getElementById('pin-modal').classList.add('on');
+}
+
+function openPinModal(){ openAccountMenu(); }
+function closePinModal(){
+  document.getElementById('pin-modal').classList.remove('on');
+  const ai = document.getElementById('account-info-modal');
+  const pc = document.getElementById('pin-change-modal');
+  if(ai) ai.classList.remove('on');
+  if(pc) pc.classList.remove('on');
+}
+
+function openAccountInfo(){
+  const gaugeAmt = document.getElementById('gauge-amt');
+  if(gaugeAmt) document.getElementById('acct-usage').textContent = gaugeAmt.textContent;
+  document.getElementById('account-info-modal').classList.add('on');
+}
+function closeAccountInfo(){
+  document.getElementById('account-info-modal').classList.remove('on');
+}
+
+function openPinChange(){
+  document.getElementById('pin-change-modal').classList.add('on');
+  document.getElementById('pin-cur').value='';
+  document.getElementById('pin-new').value='';
+  document.getElementById('pin-cfm').value='';
+  document.getElementById('pin-msg').textContent='';
+}
+function closePinChange(){
+  document.getElementById('pin-change-modal').classList.remove('on');
+}
+
 // ===== PIN設定 =====
-function openPinModal(){
+function _legacy_openPinModal(){
   if(!curUser) return;
   document.getElementById('pin-cur').value='';
   document.getElementById('pin-new').value='';
@@ -1819,7 +1858,6 @@ function openPinModal(){
   document.getElementById('pin-msg').textContent='';
   document.getElementById('pin-modal').classList.add('on');
 }
-function closePinModal(){ document.getElementById('pin-modal').classList.remove('on'); }
 
 async function savePin(){
   const cur=document.getElementById('pin-cur').value.trim();
