@@ -246,7 +246,7 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
   <div class="card" id="bento-form">
     <!-- 翌日プレビュー -->
     <div id="bento-tomorrow-preview" style="background:linear-gradient(135deg,#FFF8F0,#FEF0E0);border:1.5px solid #F4C89A;border-radius:12px;padding:10px 13px;margin-bottom:14px;display:none;">
-      <div style="font-size:11px;font-weight:700;color:#C86020;margin-bottom:5px;">🌅 明日のメニュー（参考）</div>
+      <div style="font-size:11px;font-weight:700;color:#C86020;margin-bottom:5px;"><span id="bento-preview-label">🌅 明日のメニュー</span></div>
       <div id="bento-tomorrow-items" style="display:flex;gap:7px;flex-wrap:wrap;"></div>
     </div>
     <!-- タイトル -->
@@ -818,21 +818,57 @@ const KAKO_TAKEOUT_BENTO = [
 ];
 const DOW_JA=['日','月','火','水','木','金','土'];
 
-// 注文対象日（14時以降は翌日）
+// 次の月曜日を返す
+function nextMonday(from){
+  const d = new Date(from);
+  const diff = (8 - d.getDay()) % 7 || 7; // 月=7,火=6,...,土=2,日=1
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+// 注文対象日
+// ルール：
+//   金曜9時以降・土曜・日曜 → 月曜（次の月曜）
+//   月〜木・金（9時前）: 翌日が注文対象
+//   ※注文締切は当日14時（9:00〜14:00が受付時間）
 function bentoTargetDate(){
   const d = new Date();
+  const hour = d.getHours();
+  const dow  = d.getDay(); // 0=日,1=月,...,5=金,6=土
+
+  // 金曜9時以降・土曜・日曜 → 次の月曜
+  if((dow===5 && hour>=9) || dow===6 || dow===0){
+    return nextMonday(d);
+  }
+
+  // 月〜木（or 金の9時前）: 翌日を注文対象
   const target = new Date(d);
-  if(d.getHours()>=14) target.setDate(target.getDate()+1);
-  // 日曜はスキップ
+  target.setDate(target.getDate()+1);
+  // 万が一翌日が日曜なら月曜へ
   while(target.getDay()===0) target.setDate(target.getDate()+1);
   return target;
 }
-// 翌営業日（日曜スキップ）
+
+// 次の注文対象日（プレビュー用）
 function bentoNextDate(base){
   const d = new Date(base);
+  const dow = d.getDay();
+  // 注文対象が月曜なら次は火曜、金曜なら次は月曜（翌週）
   d.setDate(d.getDate()+1);
-  while(d.getDay()===0) d.setDate(d.getDate()+1);
+  // 土・日はスキップして月曜へ
+  while(d.getDay()===0 || d.getDay()===6) d.setDate(d.getDate()+1);
   return d;
+}
+
+// 注文受付中かどうか（9:00〜14:00）
+function isBentoOpen(){
+  const d = new Date();
+  const h = d.getHours();
+  const dow = d.getDay();
+  if(dow===0) return false; // 日曜は受付なし（週末モード）
+  if(dow===6) return false; // 土曜は受付なし（週末モード）
+  if(dow===5 && h>=9) return false; // 金曜9時以降は週末モード
+  return h>=9 && h<14;   // 平日9:00〜13:59
 }
 function getTodayBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoTargetDate().getDay()]||[]), ...KAKO_FIXED_BENTO, ...KAKO_TAKEOUT_BENTO]; }
 function getTomorrowBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoNextDate(bentoTargetDate()).getDay()]||[]), ...KAKO_FIXED_BENTO, ...KAKO_TAKEOUT_BENTO]; }
@@ -1311,14 +1347,33 @@ function renderBentoMenu() {
   const dowLabel = DOW_JA[dow]+'曜日';
 
   // タイトル・バッジ更新
+  const open = isBentoOpen();
   const titleEl = document.getElementById('bento-form-title');
-  if(titleEl) titleEl.textContent = (isAfter14?'翌日':'本日')+'のお弁当（'+dowLabel+'）';
+  if(titleEl) titleEl.textContent = dowLabel+'のお弁当を注文';
 
-  // 翌日プレビュー（日替わりのみ）
+  const badge = document.getElementById('bento-cutoff-badge');
+  if(badge){
+    if(open){
+      badge.style.background='var(--g100)'; badge.style.color='var(--g700)';
+      badge.textContent='✅ 受付中（〜14:00）';
+    } else if((new Date().getDay()===5 && new Date().getHours()>=9) || new Date().getDay()===6 || new Date().getDay()===0){
+      badge.style.background='#FFF0E0'; badge.style.color='#C86020';
+      badge.textContent='🗓 週末注文受付中';
+    } else {
+      badge.style.background='var(--clay-l)'; badge.style.color='var(--clay-d)';
+      badge.textContent='⏰ 14:00切替済';
+    }
+  }
+
+  // 翌注文対象日プレビュー（日替わりのみ）
   const preview = document.getElementById('bento-tomorrow-preview');
   const previewItems = document.getElementById('bento-tomorrow-items');
-  const tmrWeekly = KAKO_WEEKLY_BENTO[bentoNextDate(target).getDay()]||[];
+  const previewLabel = document.getElementById('bento-preview-label');
+  const tmrDate = bentoNextDate(target);
+  const tmrDow = tmrDate.getDay();
+  const tmrWeekly = KAKO_WEEKLY_BENTO[tmrDow]||[];
   if(preview && previewItems && tmrWeekly.length){
+    if(previewLabel) previewLabel.textContent = '🌅 ' + DOW_JA[tmrDow] + '曜日のメニュー（参考）';
     previewItems.innerHTML = tmrWeekly.map(it=>`<span style="font-size:12px;background:white;border:1px solid #F4C89A;border-radius:7px;padding:2px 9px;color:#5A3010;">${it.icon} ${it.name}</span>`).join('');
     preview.style.display='block';
   } else if(preview){
