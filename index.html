@@ -327,24 +327,6 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
     <div style="font-size:12px;font-weight:700;opacity:.85;margin-bottom:2px;">🔐 管理者専用</div>
     <div style="font-family:'Shippori Mincho',serif;font-size:17px;font-weight:800;" id="admin-month-label">月次管理</div>
   </div>
-  <!-- 通知設定（管理者のみ） -->
-  <div class="card" style="margin-bottom:12px;">
-    <div class="sec"><span class="dot"></span>🔔 通知設定（Slack・LINE）</div>
-    <div style="background:#F8F9FA;border-radius:10px;padding:12px;margin-bottom:10px;">
-      <div style="font-size:12px;font-weight:700;color:var(--txs);margin-bottom:8px;">Slack Webhook URL</div>
-      <input type="text" id="slack-url" placeholder="https://hooks.slack.com/services/..." style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <div style="display:flex;gap:8px;">
-        <button class="btn" style="flex:1;margin:0;" onclick="saveSlack()">保存</button>
-        <button class="btn2" style="flex:1;margin:0;" onclick="testSlack()">テスト送信</button>
-      </div>
-    </div>
-    <div style="background:#F8F9FA;border-radius:10px;padding:12px;">
-      <div style="font-size:12px;font-weight:700;color:var(--txs);margin-bottom:8px;">LINE グループ URL</div>
-      <div class="info-box" style="margin-bottom:8px;font-size:11px;">LINE送信ボタンを押すと、メッセージが自動コピーされてLINEグループが開きます</div>
-      <input type="text" id="line-url" placeholder="https://line.me/ti/g2/..." style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <button class="btn" style="width:100%;margin:0;" onclick="saveLine()">保存</button>
-    </div>
-  </div>
   <div style="display:flex;gap:5px;margin-bottom:14px;">
     <button class="asb active" id="asb-detail"  onclick="showAdminSub('detail')">📋 個人別明細</button>
     <button class="asb"        id="asb-summary" onclick="showAdminSub('summary')">📊 月次集計</button>
@@ -375,6 +357,24 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
         <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-bottom:6px;"><span>会社負担合計</span><span id="admin-co" style="color:var(--g700);"></span></div>
         <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;"><span>天引き合計</span><span id="admin-dd" style="color:var(--clay);"></span></div>
       </div>
+    </div>
+  </div>
+  <!-- 通知設定（管理者のみ・最下部） -->
+  <div class="card" style="margin-top:12px;">
+    <div class="sec"><span class="dot"></span>🔔 通知設定（Slack・LINE）</div>
+    <div style="background:#F8F9FA;border-radius:10px;padding:12px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--txs);margin-bottom:8px;">Slack Webhook URL</div>
+      <input type="text" id="slack-url" placeholder="https://hooks.slack.com/services/..." style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1;margin:0;" onclick="saveSlack()">保存</button>
+        <button class="btn2" style="flex:1;margin:0;" onclick="testSlack()">テスト送信</button>
+      </div>
+    </div>
+    <div style="background:#F8F9FA;border-radius:10px;padding:12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--txs);margin-bottom:8px;">LINE グループ URL</div>
+      <div class="info-box" style="margin-bottom:8px;font-size:11px;">LINE送信ボタンを押すと、メッセージが自動コピーされてLINEグループが開きます</div>
+      <input type="text" id="line-url" placeholder="https://line.me/ti/g2/..." style="width:100%;box-sizing:border-box;margin-bottom:8px;">
+      <button class="btn" style="width:100%;margin:0;" onclick="saveLine()">保存</button>
     </div>
   </div>
 </div>
