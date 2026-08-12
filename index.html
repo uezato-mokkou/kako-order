@@ -661,15 +661,15 @@ const LIMIT_SUBSIDY = 7500;
 
 const LUNCH_ITEMS = [
   // ─── ランチメニュー ───
-  {name:'八重山そば', price:700, icon:'🍜', section:'🍽 ランチメニュー'},
-  {name:'みそ肉野菜そば', price:800, icon:'🍲'},
-  {name:'ぶっかけそば', price:900, icon:'🍜'},
+  {name:'八重山そば', price:700, icon:'🍜', section:'🍽 ランチメニュー', soba:true, setPrice:1200},
+  {name:'みそ肉野菜そば', price:800, icon:'🍲', soba:true, setPrice:1300},
+  {name:'ぶっかけそば', price:900, icon:'🍜', soba:true, setPrice:1400},
   {name:'魚フライ定食(テイクアウト)', price:1000, icon:'🐟'},
   {name:'チキンカツ定食(テイクアウト)', price:1000, icon:'🍗'},
   {name:'生姜焼き定食(テイクアウト)', price:1100, icon:'🥩'},
   {name:'とんかつ定食(テイクアウト)', price:1200, icon:'🍖'},
   {name:'タコライス(テイクアウト)', price:1000, icon:'🌮'},
-  {name:'焼きそば', price:700, icon:'🍝'},
+  {name:'焼きそば', price:800, icon:'🍝'},
   {name:'ライス', price:200, icon:'🍚'},
   {name:'弁当(店頭購入)', price:700, icon:'🍱'},
   {name:'八重山そば(店頭購入)', price:600, icon:'🍜'},
@@ -684,6 +684,16 @@ const LUNCH_ITEMS = [
   {name:'魚フライ', price:700, icon:'🐟'},
   {name:'チキンカツ', price:700, icon:'🍗'},
   {name:'枝豆', price:400, icon:'🌿'},
+  // ─── ドリンクメニュー ───
+  {name:'さんぴん茶', price:300, icon:'🍵', section:'🥤 ドリンクメニュー'},
+  {name:'ウーロン茶', price:300, icon:'🍵'},
+  {name:'コーラ', price:300, icon:'🥤'},
+  {name:'カルピス', price:300, icon:'🥛'},
+  {name:'アイスコーヒー', price:400, icon:'☕'},
+  {name:'オリオン瓶ビール（小）', price:550, icon:'🍺'},
+  {name:'オリオン瓶ビール（大）', price:800, icon:'🍺'},
+  {name:'ハイボール（ジョッキ）', price:600, icon:'🥃'},
+  {name:'レモンサワー（ジョッキ）', price:600, icon:'🥃'},
 ];
 // 曜日固定弁当メニュー（1=月〜6=土、0=日）
 const KAKO_WEEKLY_BENTO = {
@@ -738,7 +748,10 @@ const BENTO_ITEMS = [];
 // ===== 状態 =====
 let curUser = null;
 let isAdmin = false;
-let selectedSet = new Set();
+// orderMap: {index: {qty, size, isSet}}
+// size: 'small'(-200) | 'regular'(0) | 'large'(+100)  ※そばのみ
+// isSet: bool  ※そばのみ（まんぷくセット）
+let orderMap = {};
 let bentoSet = new Set();
 let allUsers = [];
 
@@ -850,7 +863,7 @@ async function doLogin(isAuto=false) {
 
 function doLogout() {
   curUser = null; isAdmin = false;
-  selectedSet = new Set(); bentoSet = new Set();
+  orderMap = {}; bentoSet = new Set();
   closeLogout(); closePinModal();
   localStorage.removeItem('kako_session'); // 自動ログイン解除
   document.getElementById('hdr-name-btn').textContent = '— ▾';
@@ -892,75 +905,193 @@ async function refreshGauge() {
 }
 
 // ===== 店内注文メニュー =====
+// ────────────────────────────────────
+// 店内注文：価格計算ヘルパー
+// ────────────────────────────────────
+function calcItemPrice(idx) {
+  const it = LUNCH_ITEMS[idx];
+  const o  = orderMap[idx];
+  if (!it || !o) return 0;
+  if (it.soba) {
+    let p = o.isSet ? it.setPrice : it.price;
+    if (!o.isSet) {
+      if (o.size === 'small') p -= 200;
+      if (o.size === 'large') p += 100;
+    }
+    return p * o.qty;
+  }
+  return it.price * o.qty;
+}
+
+function calcItemLabel(idx) {
+  const it = LUNCH_ITEMS[idx];
+  const o  = orderMap[idx];
+  if (!it || !o) return '';
+  let name = it.soba && o.isSet ? 'まんぷく' + it.name.replace('そば','そばセット') : it.name;
+  let suf = '';
+  if (it.soba && !o.isSet) {
+    if (o.size==='large') suf = '（大盛）';
+    if (o.size==='small') suf = '（小）';
+  }
+  return name + suf + (o.qty>1 ? '×'+o.qty : '');
+}
+
+function orderAdd(idx) {
+  const it = LUNCH_ITEMS[idx];
+  if (!orderMap[idx]) {
+    orderMap[idx] = {qty:1, size:'regular', isSet:false};
+  } else {
+    orderMap[idx].qty++;
+  }
+  renderLunchMenu();
+}
+
+function orderRemove(idx) {
+  if (!orderMap[idx]) return;
+  orderMap[idx].qty--;
+  if (orderMap[idx].qty <= 0) delete orderMap[idx];
+  renderLunchMenu();
+}
+
+function sobaToggleSet(idx) {
+  if (!orderMap[idx]) return;
+  orderMap[idx].isSet = !orderMap[idx].isSet;
+  renderLunchMenu();
+}
+
+function sobaSetSize(idx, size) {
+  if (!orderMap[idx]) return;
+  orderMap[idx].size = size;
+  renderLunchMenu();
+}
+
+// セクション分け用ヘルパー
+function getSections() {
+  const sections = [];
+  let curSec = null, curItems = [];
+  LUNCH_ITEMS.forEach((it, i) => {
+    if (it.section) {
+      if (curSec !== null) sections.push({label: curSec, items: curItems});
+      curSec = it.section; curItems = [];
+    }
+    curItems.push({it, i});
+  });
+  if (curSec !== null) sections.push({label: curSec, items: curItems});
+  return sections;
+}
+
+// セクション色設定
+const SEC_STYLE = {
+  '🍽 ランチメニュー': {bg:'#D4770A',  border:'#E89020', selBg:'#FFE0B2', qBg:'#A05000'},
+  '🌙 夜の単品メニュー': {bg:'#2C3E6B', border:'#4A6AAA', selBg:'#C5D8F0', qBg:'#2C3E6B'},
+  '🥤 ドリンクメニュー': {bg:'#1A7A60', border:'#2EAA88', selBg:'#C8F0E8', qBg:'#1A7A60'},
+};
+
 function renderLunchMenu() {
-  // 夜メニューの開始インデックスを特定してランチと夜に分割
-  const dinnerStartIdx = LUNCH_ITEMS.findIndex(it => it.section && it.section.includes('夜'));
-  const lunchItems  = dinnerStartIdx >= 0 ? LUNCH_ITEMS.slice(0, dinnerStartIdx) : LUNCH_ITEMS;
-  const dinnerItems = dinnerStartIdx >= 0 ? LUNCH_ITEMS.slice(dinnerStartIdx)    : [];
+  const sections = getSections();
+  let html = '';
 
-  const lunchHtml = `
-    <div style="margin-bottom:16px;">
-      <div style="display:inline-flex;align-items:center;gap:6px;background:#D4770A;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
-        🍽 ランチメニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">11:00〜14:00</span>
-      </div>
-      ${lunchItems.map((it,i)=>{
-        const idx = i;
-        const on  = selectedSet.has(idx);
-        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #E89020;background:${on?'#FFE0B2':'#FFFBF5'};border-color:${on?'#E89020':'#F0E0C8'};">
-          <span class="mi-left">
-            <span class="cb" style="background:${on?'#E89020':'transparent'};border-color:${on?'#E89020':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
-            <span class="mi-icon">${it.icon}</span>
-            <span class="mi-name" style="color:${on?'#7A3800':'var(--tx)'};font-weight:${on?'700':'500'};">${it.name}</span>
-          </span>
-          <span class="mi-price" style="color:#A05000;font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
-        </button>`;
-      }).join('')}
-    </div>`;
+  sections.forEach(sec => {
+    const st = SEC_STYLE[sec.label] || {bg:'#555', border:'#777', selBg:'#EEE', qBg:'#555'};
+    let rows = '';
 
-  const dinnerHtml = `
-    <div>
-      <div style="display:inline-flex;align-items:center;gap:6px;background:#2C3E6B;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:10px;">
-        🌙 夜の単品メニュー<span style="background:rgba(255,255,255,.25);border-radius:8px;padding:1px 6px;font-size:10px;">17:00〜21:30</span>
-      </div>
-      ${dinnerItems.map((it,i)=>{
-        const idx = dinnerStartIdx + i;
-        const on  = selectedSet.has(idx);
-        return `<button class="mi${on?' on':''}" onclick="toggleOrder(${idx})" style="border-left:4px solid #4A6AAA;background:${on?'#C5D8F0':'#F7F8FC'};border-color:${on?'#4A6AAA':'#D0D8E8'};">
-          <span class="mi-left">
-            <span class="cb" style="background:${on?'#2C3E6B':'transparent'};border-color:${on?'#2C3E6B':'#ccc'};color:#fff;font-size:13px;">${on?'✓':''}</span>
-            <span class="mi-icon">${it.icon}</span>
-            <span class="mi-name" style="color:${on?'#1A2848':'var(--tx)'};font-weight:${on?'700':'500'};">${it.name}</span>
-          </span>
-          <span class="mi-price" style="color:#2C3E6B;font-weight:${on?'700':'500'};">¥${it.price.toLocaleString()}</span>
-        </button>`;
-      }).join('')}
-    </div>`;
+    sec.items.forEach(({it, i}) => {
+      const o   = orderMap[i] || null;
+      const qty = o ? o.qty : 0;
+      const sel = qty > 0;
 
-  document.getElementById('lunch-list').innerHTML = lunchHtml + dinnerHtml;
+      // 価格表示
+      let priceDisp = '¥' + it.price.toLocaleString();
+      if (it.soba && sel) {
+        const p = calcItemPrice(i) / qty;
+        priceDisp = '¥' + p.toLocaleString();
+        if (o.isSet) priceDisp += '（セット）';
+        else if (o.size==='large') priceDisp += '＋大盛';
+        else if (o.size==='small') priceDisp += '（小）';
+      }
+
+      // 個数コントロール
+      const qtyCtrl = `
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <button onclick="orderRemove(${i})" style="width:30px;height:30px;border-radius:50%;border:2px solid ${st.border};background:${sel?st.border:'#fff'};color:${sel?'#fff':st.border};font-size:18px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;">－</button>
+          <span style="font-size:16px;font-weight:700;min-width:20px;text-align:center;color:${sel?st.qBg:'var(--txf)'};">${qty}</span>
+          <button onclick="orderAdd(${i})" style="width:30px;height:30px;border-radius:50%;border:2px solid ${st.border};background:${st.border};color:#fff;font-size:18px;font-weight:700;cursor:pointer;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;">＋</button>
+        </div>`;
+
+      // そば専用オプション（選択中のみ表示）
+      let sobaOpts = '';
+      if (it.soba && sel) {
+        const sz = o.size;
+        const btnS = (size, label, extra) =>
+          `<button onclick="sobaSetSize(${i},'${size}')" style="padding:5px 10px;border-radius:16px;border:1.5px solid ${sz===size?st.border:'#ccc'};background:${sz===size?st.selBg:'#fff'};font-size:12px;font-weight:${sz===size?'700':'500'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${label}${extra}</button>`;
+
+        const setBtn = `<button onclick="sobaToggleSet(${i})" style="padding:5px 12px;border-radius:16px;border:1.5px solid ${o.isSet?'#1A7A4A':'#ccc'};background:${o.isSet?'#D5F5E3':'#fff'};font-size:12px;font-weight:${o.isSet?'700':'500'};color:${o.isSet?'#1A7A4A':'var(--txf)'};cursor:pointer;-webkit-tap-highlight-color:transparent;">${o.isSet?'✓ まんぷくセット':'＋まんぷくセット'}</button>`;
+
+        sobaOpts = `
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px 0;padding:8px 10px;background:#F9F9F9;border-radius:10px;border:1px solid #EEE;">
+            <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+              <span style="font-size:11px;color:var(--txf);font-weight:600;margin-right:2px;">サイズ：</span>
+              ${o.isSet ? '' : btnS('small','小','-¥200') + btnS('regular','普通','') + btnS('large','大盛','+¥100')}
+              ${setBtn}
+            </div>
+          </div>`;
+      }
+
+      rows += `
+        <div style="border:1.5px solid ${sel?st.border:'#E8E8E8'};border-radius:12px;padding:10px 12px;margin-bottom:6px;background:${sel?st.selBg:'#fff'};">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+              <span style="font-size:18px;">${it.icon}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:14px;font-weight:${sel?'700':'500'};color:${sel?st.qBg:'var(--tx)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.name}</div>
+                <div style="font-size:12px;color:${sel?st.qBg:'var(--txf)'};">${priceDisp}</div>
+              </div>
+            </div>
+            ${qtyCtrl}
+          </div>
+          ${sobaOpts}
+        </div>`;
+    });
+
+    html += `
+      <div style="margin-bottom:16px;">
+        <div style="display:inline-flex;align-items:center;gap:6px;background:${st.bg};color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;margin-bottom:8px;">
+          ${sec.label}
+        </div>
+        ${rows}
+      </div>`;
+  });
+
+  document.getElementById('lunch-list').innerHTML = html;
   updateOrderTotal();
 }
 
-function toggleOrder(i){ selectedSet.has(i)?selectedSet.delete(i):selectedSet.add(i); renderLunchMenu(); }
+// toggleOrder は後方互換（不要になったが念のため残す）
+function toggleOrder(i){ orderAdd(i); }
 
 function updateOrderTotal() {
-  const arr = [...selectedSet];
-  const total = arr.reduce((s,i)=>s+LUNCH_ITEMS[i].price, 0);
+  const keys = Object.keys(orderMap).map(Number).filter(k => orderMap[k] && orderMap[k].qty > 0);
+  const total = keys.reduce((s, i) => s + calcItemPrice(i), 0);
+  const totalQty = keys.reduce((s, i) => s + orderMap[i].qty, 0);
   document.getElementById('order-total').textContent = '¥' + total.toLocaleString();
   const el = document.getElementById('order-summary');
-  el.innerHTML = arr.length ? arr.map(i=>LUNCH_ITEMS[i].name+'　¥'+LUNCH_ITEMS[i].price.toLocaleString()).join('<br>') : '未選択';
+  el.innerHTML = keys.length
+    ? keys.map(i => calcItemLabel(i) + '　¥' + calcItemPrice(i).toLocaleString()).join('<br>')
+    : '未選択';
   const btn = document.getElementById('order-confirm-btn');
-  btn.disabled = !arr.length;
-  btn.textContent = arr.length ? `この内容で確定する（${arr.length}点）` : '選択してください';
-  if(arr.length) btn.onclick = confirmOrder;
+  btn.disabled = !keys.length;
+  btn.textContent = keys.length ? `この内容で確定する（${totalQty}点）` : '選択してください';
+  if(keys.length) btn.onclick = confirmOrder;
 }
 
 async function confirmOrder() {
-  const arr = [...selectedSet];
-  const items = arr.map(i=>LUNCH_ITEMS[i].name);
-  const total = arr.reduce((s,i)=>s+LUNCH_ITEMS[i].price, 0);
+  const keys  = Object.keys(orderMap).map(Number).filter(k=>orderMap[k]&&orderMap[k].qty>0);
+  const items = keys.map(i=>calcItemLabel(i));
+  const total = keys.reduce((s,i)=>s+calcItemPrice(i), 0);
+  const arr   = keys; // 後方互換
   const now = new Date();
   const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const lines = arr.map(i=>`　${LUNCH_ITEMS[i].name}　¥${LUNCH_ITEMS[i].price.toLocaleString()}`).join('\n');
+  const lines = keys.map(i=>`　${calcItemLabel(i)}　¥${calcItemPrice(i).toLocaleString()}`).join('\n');
 
   const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
 
@@ -998,7 +1129,7 @@ function storeConfirm(){
 }
 
 function resetOrder(){
-  selectedSet = new Set();
+  orderMap = {};
   document.getElementById('order-select').style.display='block';
   document.getElementById('order-sent').style.display='none';
   document.getElementById('store-ok-btn').style.display='block';
