@@ -1162,7 +1162,7 @@ async function confirmOrder() {
   const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
   const lines = orderLines.map(l=>`　${l.label}　¥${l.price.toLocaleString()}`).join('\n');
 
-  const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+  const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※請求はうえざと木工へ\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
 
   // 確認ダイアログ
   const preview = items.join('・') + `\n合計 ¥${total.toLocaleString()}`;
@@ -1173,15 +1173,15 @@ async function confirmOrder() {
   await refreshGauge();
   await loadHistory();
 
-  // 今月累計（msg更新のため再計算）
+  // 今月のスタッフ全員合計
   const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const [all, ballB] = await Promise.all([
-    sbFetch(`kako_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${monthFrom}`),
-    sbFetch(`kako_bento_orders?user_name=eq.${encodeURIComponent(curUser)}&select=total&ordered_at=gte.${monthFrom}`),
+    sbFetch(`kako_orders?select=total&ordered_at=gte.${monthFrom}`),
+    sbFetch(`kako_bento_orders?select=total&ordered_at=gte.${monthFrom}`),
   ]);
   const monthTotal = [...(all||[]),...(ballB||[])].reduce((s,r)=>s+r.total,0);
 
-  const finalMsg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※食事補助対象（請求はうえざと木工へ）\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+  const finalMsg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※請求はうえざと木工へ\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
 
   document.getElementById('order-line-msg').textContent = finalMsg;
   document.getElementById('order-select').style.display = 'none';
