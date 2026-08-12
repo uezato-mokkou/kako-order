@@ -77,6 +77,12 @@ function init() {
 function prevMonth(){ curM--; if(curM<1){curM=12;curY--;} load(); }
 function nextMonth(){ curM++; if(curM>12){curM=1;curY++;} load(); }
 
+// 名前から個数をパース（「名前×3」→ {name:'名前', qty:3}）
+function parseItem(raw) {
+  const m = raw.match(/^(.+?)×(\d+)$/);
+  return m ? {name: m[1].trim(), qty: parseInt(m[2])} : {name: raw, qty: 1};
+}
+
 async function load() {
   document.getElementById('month-label').textContent = `${curY}年${curM}月`;
   document.getElementById('content').innerHTML = '<div class="loading">読み込み中...</div>';
@@ -89,36 +95,39 @@ async function load() {
     DB.from('kako_bento_orders').select('user_name,items,total,order_date,ordered_at').gte('ordered_at',from).lt('ordered_at',to).order('ordered_at'),
   ]);
 
-  // 日別にグループ化
-  const byDate = {};
-  const addRecord = (r, type) => {
-    const d = type === '弁当' ? r.order_date : r.ordered_at.split('T')[0];
-    if(!byDate[d]) byDate[d] = [];
-    r.items.forEach(name => {
-      if(!byDate[d].find(i=>i.name===name&&i.type===type)) {
-        byDate[d].push({name, type, price:r.total/r.items.length, count:0});
-      }
-      byDate[d].find(i=>i.name===name&&i.type===type).count++;
-    });
+  // 日別に注文を個別保持（合算しない）
+  const byDate = {}; // {date: [{time, userName, parsedItems, total, type}]}
+
+  const toJST = s => {
+    const d = new Date(s);
+    return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   };
 
-  // 実際は注文ごとにアイテムをカウント
-  const byDate2 = {};
   [...(orders||[])].forEach(r => {
     const d = r.ordered_at.split('T')[0];
-    if(!byDate2[d]) byDate2[d] = {items:{},total:0};
-    r.items.forEach(name => { byDate2[d].items[name]=(byDate2[d].items[name]||0)+1; });
-    byDate2[d].total += r.total;
+    if(!byDate[d]) byDate[d] = [];
+    byDate[d].push({
+      time: toJST(r.ordered_at),
+      userName: r.user_name,
+      parsedItems: (r.items||[]).map(parseItem),
+      total: r.total,
+      type: '店内'
+    });
   });
+
   [...(bentos||[])].forEach(r => {
     const d = r.order_date;
-    if(!byDate2[d]) byDate2[d] = {items:{},total:0};
-    r.items.forEach(name => { byDate2[d].items[name]=(byDate2[d].items[name]||0)+1; });
-    byDate2[d].total += r.total;
+    if(!byDate[d]) byDate[d] = [];
+    byDate[d].push({
+      time: toJST(r.ordered_at),
+      userName: r.user_name,
+      parsedItems: (r.items||[]).map(name => ({name, qty:1})),
+      total: r.total,
+      type: '弁当'
+    });
   });
 
-  const dates = Object.keys(byDate2).sort();
-
+  const dates = Object.keys(byDate).sort();
   if(!dates.length) {
     document.getElementById('content').innerHTML = '<div class="loading">この月の記録はありません</div>';
     return;
@@ -126,18 +135,42 @@ async function load() {
 
   let grandTotal=0, grandCount=0;
   let html = '';
-  dates.forEach(d=>{
+
+  dates.forEach(d => {
     const [y,m,day] = d.split('-').map(Number);
     const dateObj = new Date(y,m-1,day);
     const label = `${m}/${day}（${DAYS[dateObj.getDay()]}）`;
-    const {items,total} = byDate2[d];
-    grandTotal += total;
-    const count = Object.values(items).reduce((s,c)=>s+c,0);
-    grandCount += count;
-    const itemRows = Object.entries(items).map(([name,cnt])=>`<div class="day-item"><span>${name}</span><span>×${cnt}個</span></div>`).join('');
+    const records = byDate[d];
+
+    // この日の合計
+    const dayTotal = records.reduce((s,r)=>s+r.total, 0);
+    const dayCount = records.reduce((s,r)=>r.parsedItems.reduce((ss,it)=>ss+it.qty, 0)+s, 0);
+    grandTotal += dayTotal;
+    grandCount += dayCount;
+
+    // 注文ごとに表示（時刻・氏名・品目）
+    const recordRows = records.map(r => {
+      const badge = `<span style="font-size:10px;background:${r.type==='弁当'?'#7A4A1A':'#1A5276'};color:#fff;padding:1px 6px;border-radius:8px;margin-right:4px;">${r.type}</span>`;
+      const itemRows = r.parsedItems.map(it =>
+        `<div class="day-item" style="padding-left:16px;">
+           <span>${it.name}</span>
+           <span>×${it.qty}個</span>
+         </div>`
+      ).join('');
+      return `<div style="border-bottom:1px dashed var(--line);padding:8px 0 6px;">
+        <div style="font-size:11px;color:var(--txf);margin-bottom:4px;">
+          ${badge}${r.userName}　${r.time}　¥${r.total.toLocaleString()}
+        </div>
+        ${itemRows}
+      </div>`;
+    }).join('');
+
     html += `<div class="day-block">
-      <div class="day-head"><span class="day-date">■ ${label}</span><span class="day-total">¥${total.toLocaleString()}</span></div>
-      <div class="day-body">${itemRows}</div>
+      <div class="day-head">
+        <span class="day-date">■ ${label}</span>
+        <span class="day-total">¥${dayTotal.toLocaleString()}（合計${dayCount}個）</span>
+      </div>
+      <div class="day-body">${recordRows}</div>
     </div>`;
   });
 
