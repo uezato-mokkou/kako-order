@@ -1305,10 +1305,6 @@ async function confirmOrder() {
 
   const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※請求はうえざと木工へ\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
 
-  // 確認ダイアログ
-  const preview = items.join('・') + `\n合計 ¥${total.toLocaleString()}`;
-  if(!confirm(`この内容を確定して、店員さんのLINEに注文内容を送信してもよろしいでしょうか？\n\n${preview}`)) return;
-
   // Supabase保存
   await sbFetch('kako_orders', 'POST', {user_name:curUser, items, total, order_type:'店内'});
   await refreshGauge();
