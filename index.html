@@ -228,16 +228,16 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
   <div class="card" id="order-sent" style="display:none;">
     <div style="text-align:center;padding:4px 0 14px;">
       <div style="width:52px;height:52px;border-radius:50%;background:var(--g50);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 10px;">📨</div>
-      <p style="font-weight:700;margin:0;font-size:14px;">店員さんのLINEに送信しました</p>
+      <p style="font-weight:700;margin:0;font-size:14px;" id="order-sent-title">店員さんのLINEに送信しました</p>
     </div>
     <div class="line-frame">
-      <div class="line-grp">💬 Kako食事報告</div>
       <div class="line-bubble" id="order-line-msg"></div>
     </div>
+    <div id="order-send-status" style="margin-top:10px;"></div>
     <div class="info-box" style="margin-top:12px;font-weight:700;color:var(--g700);background:var(--g50);border:1.5px solid var(--g200);">
       📱 店員さんのスマホに、正しくLINEに送信されたか確認してください。
     </div>
-    <button class="btn2" onclick="resetOrder()">もう一度試す</button>
+    <button class="btn2" onclick="resetOrder()">再度注文する</button>
   </div>
 </div>
 
@@ -300,7 +300,6 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
     <div class="card" id="sum-line-card">
       <div class="sec"><span class="dot"></span>Kakoさんへ送るLINEメッセージ</div>
       <div class="line-frame">
-        <div class="line-grp">💬 Kako食事報告</div>
         <div class="line-bubble" id="sum-line-msg"></div>
       </div>
 
@@ -374,7 +373,10 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
       <div style="font-size:12px;font-weight:700;color:var(--txs);margin-bottom:8px;">LINE グループ URL</div>
       <div class="info-box" style="margin-bottom:8px;font-size:11px;">LINE送信ボタンを押すと、メッセージが自動コピーされてLINEグループが開きます</div>
       <input type="text" id="line-url" placeholder="https://line.me/ti/g2/..." style="width:100%;box-sizing:border-box;margin-bottom:8px;">
-      <button class="btn" style="width:100%;margin:0;" onclick="saveLine()">保存</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="flex:1;margin:0;" onclick="saveLine()">保存</button>
+        <button class="btn2" style="flex:1;margin:0;" onclick="testLine()">テスト送信</button>
+      </div>
     </div>
   </div>
 </div>
@@ -415,14 +417,14 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
     <button class="back-l" onclick="closeSet()">← 設定に戻る</button>
     <div class="card">
       <div class="sec"><span class="dot"></span>Slack 通知設定</div>
-      <div class="fb"><div class="fl">Slack Webhook URL</div><input type="text" id="slack-url" placeholder="https://hooks.slack.com/services/..."></div>
+      <div class="fb"><div class="fl">Slack Webhook URL</div><input type="text" id="slack-url-legacy" placeholder="https://hooks.slack.com/services/..."></div>
       <button class="btn" onclick="saveSlack()">保存</button>
       <button class="btn2" onclick="testSlack()">テスト送信</button>
     </div>
     <div class="card">
       <div class="sec"><span class="dot"></span>LINE グループ URL</div>
       <div class="info-box" style="margin-bottom:12px;">LINE送信ボタンを押すと、メッセージが自動コピーされてLINEグループが開きます</div>
-      <div class="fb"><div class="fl">LINE グループ URL</div><input type="text" id="line-url" placeholder="https://line.me/ti/g2/..."></div>
+      <div class="fb"><div class="fl">LINE グループ URL</div><input type="text" id="line-url-legacy" placeholder="https://line.me/ti/g2/..."></div>
       <button class="btn" onclick="saveLine()">保存</button>
     </div>
   </div>
@@ -1325,6 +1327,11 @@ function closeOrderConfirmModal() {
   document.getElementById('order-confirm-modal').style.display = 'none';
 }
 
+// 送信ステータス1行を描画
+function sendStatusRow(icon, label, text, color){
+  return `<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:${color};padding:4px 0;"><span>${icon}</span><span style="min-width:40px;">${label}</span><span style="font-weight:500;">${text}</span></div>`;
+}
+
 // OK押下後：実際に注文処理
 async function executeStoreOrder() {
   closeOrderConfirmModal();
@@ -1333,32 +1340,59 @@ async function executeStoreOrder() {
   const total = orderLines.reduce((s,l)=>s+l.price, 0);
   const now = new Date();
   const timeStr = `${now.getMonth()+1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
-  const lines = orderLines.map(l=>`　${l.label}　¥${l.price.toLocaleString()}`).join('\n');
+  const lines = orderLines.map(l=>`\u3000${l.label}\u3000¥${l.price.toLocaleString()}`).join('\n');
+  const baseMsg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計\u3000¥${total.toLocaleString()}\n※請求はうえざと木工へ\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
 
-  const msg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※請求はうえざと木工へ\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
-
-  // Supabase保存
-  await sbFetch('kako_orders', 'POST', {user_name:curUser, items, total, order_type:'店内'});
-  await refreshGauge();
-  await loadHistory();
-
-  // 今月のスタッフ全員合計
-  const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const [all, ballB] = await Promise.all([
-    sbFetch(`kako_orders?select=total&ordered_at=gte.${monthFrom}`),
-    sbFetch(`kako_bento_orders?select=total&ordered_at=gte.${monthFrom}`),
-  ]);
-  const monthTotal = [...(all||[]),...(ballB||[])].reduce((s,r)=>s+r.total,0);
-
-  const finalMsg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計　¥${total.toLocaleString()}\n※請求はうえざと木工へ\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
-
-  document.getElementById('order-line-msg').textContent = finalMsg;
+  // --- 先に完了画面へ遷移（この先で何が起きても画面は必ず切り替わる） ---
+  const titleEl  = document.getElementById('order-sent-title');
+  const statusEl = document.getElementById('order-send-status');
+  document.getElementById('order-line-msg').textContent = baseMsg;
   document.getElementById('order-select').style.display = 'none';
   document.getElementById('order-sent').style.display = 'block';
+  window.scrollTo({top:0, behavior:'smooth'});
+  if(titleEl) titleEl.textContent = '送信中です…';
+  if(statusEl) statusEl.innerHTML = sendStatusRow('⏳','LINE','送信中…','#8A8A8A') + sendStatusRow('⏳','Slack','送信中…','#8A8A8A');
 
-  // Slack通知 & LINE自動送信
-  sendSlack(finalMsg);
-  sendLineMessage(finalMsg);
+  // --- ① 注文をSupabaseへ保存 ---
+  let saveErr = null;
+  try {
+    await sbFetch('kako_orders', 'POST', {user_name:curUser, items, total, order_type:'店内'});
+    await refreshGauge();
+    await loadHistory();
+  } catch(e) {
+    saveErr = (e && e.message) ? e.message : String(e);
+    console.error('注文保存エラー:', e);
+  }
+
+  // --- ② 今月のスタッフ全員合計を付けたメッセージを作成 ---
+  let finalMsg = baseMsg;
+  try {
+    const monthFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const [all, ballB] = await Promise.all([
+      sbFetch(`kako_orders?select=total&ordered_at=gte.${monthFrom}`),
+      sbFetch(`kako_bento_orders?select=total&ordered_at=gte.${monthFrom}`),
+    ]);
+    const monthTotal = [...(all||[]),...(ballB||[])].reduce((s,r)=>s+r.total,0);
+    finalMsg = `${curUser}\n${timeStr}\n${lines}\n─────────\n合計\u3000¥${total.toLocaleString()}\n※請求はうえざと木工へ\n今月の合計：¥${monthTotal.toLocaleString()}\n\n📋 履歴はこちら（リアルタイム反映）\n${HISTORY_URL}\n\n⚠️ このメッセージは会社間の記録です。削除しないようお願いいたします。`;
+  } catch(e) { console.error('月合計取得エラー:', e); }
+  document.getElementById('order-line-msg').textContent = finalMsg;
+
+  // --- ③ LINE・Slackへ同時送信 ---
+  const [lineRes, slackRes] = await Promise.all([
+    sendLineMessage(finalMsg),
+    sendSlack(finalMsg)
+  ]);
+
+  let h = '';
+  h += lineRes.ok
+    ? sendStatusRow('✅','LINE','送信しました','#1A7A4A')
+    : sendStatusRow('⚠️','LINE','送信できませんでした（'+lineRes.error+'）','#C0392B');
+  h += slackRes.ok
+    ? sendStatusRow('✅','Slack','送信しました','#1A7A4A')
+    : sendStatusRow('⚠️','Slack','送信できませんでした（'+slackRes.error+'）','#C0392B');
+  if(saveErr) h += sendStatusRow('⚠️','履歴','保存できませんでした（'+saveErr+'）','#C0392B');
+  if(statusEl) statusEl.innerHTML = h;
+  if(titleEl) titleEl.textContent = lineRes.ok ? '店員さんのLINEに送信しました' : '⚠️ LINEに送信できませんでした';
 }
 
 function storeConfirm(){
@@ -1368,6 +1402,7 @@ function storeConfirm(){
 
 function resetOrder(){
   orderMap = {};
+  const st = document.getElementById('order-send-status'); if(st) st.innerHTML='';
   document.getElementById('order-select').style.display='block';
   document.getElementById('order-sent').style.display='none';
   document.getElementById('store-ok-btn').style.display='block';
@@ -1707,8 +1742,17 @@ function renderBentoSummary(rows) {
 function sendBentoLine() {
   const msg = document.getElementById('sum-line-msg').textContent;
   if(!confirm('この内容をLINEグループに送信してもよろしいですか？\n\n' + msg.substring(0,100) + '...')) return;
-  sendSlack(msg);
-  sendLineMessage(msg).then(async () => {
+  sendSlack(msg).then(r=>{ if(!r.ok) showToast('⚠️ Slack送信失敗：'+r.error); });
+  sendLineMessage(msg).then(async (r) => {
+    if(!r.ok){
+      showToast('⚠️ LINE送信に失敗しました：'+r.error);
+      alert('LINEへの送信に失敗しました。\n\n' + r.error + '\n\nもう一度送信してください。');
+      document.getElementById('sum-stamp').classList.remove('on');
+      document.getElementById('sum-line-card').style.opacity = '1';
+      document.getElementById('sum-line-card').style.pointerEvents = 'auto';
+      return;
+    }
+    showToast('✅ LINEグループに送信しました');
     // LINE送信完了後、本日の弁当注文をすべて sent=true に更新
     try {
       const target = bentoTargetDate();
@@ -1890,11 +1934,32 @@ function closeLogout(){ document.getElementById('logout-modal').classList.remove
 function saveSlack(){ saveSettingsToCloud(); }
 function saveLine(){  saveSettingsToCloud(); }
 
-async function testSlack(){ await sendSlack('【テスト】Kako食事補助システムからの通知テストです'); }
+async function testSlack(){
+  const r = await sendSlack('【テスト】Kako注文アプリからの通知テストです');
+  showToast(r.ok ? '✅ Slackへ送信しました' : '⚠️ Slack送信失敗：' + r.error);
+}
+async function testLine(){
+  const r = await sendLineMessage('【テスト】Kako注文アプリからの通知テストです');
+  showToast(r.ok ? '✅ LINEへ送信しました' : '⚠️ LINE送信失敗：' + r.error);
+}
+
+// 設定値を取得（localStorage → 無ければSupabaseから）
+async function getKakoSetting(key, lsKey){
+  const cached = localStorage.getItem(lsKey);
+  if(cached) return cached;
+  try {
+    const rows = await sbFetch(`kako_settings?key=eq.${key}&select=value`);
+    if(rows && rows[0] && rows[0].value){
+      localStorage.setItem(lsKey, rows[0].value);
+      return rows[0].value;
+    }
+  } catch(e){ console.log('設定取得エラー:', key, e); }
+  return '';
+}
 
 async function sendSlack(msg) {
-  const url = localStorage.getItem('kako_slack_url');
-  if(!url) return;
+  const url = await getKakoSetting('slack_webhook_url', 'kako_slack_url');
+  if(!url) return {ok:false, error:'Webhook URLが未設定です'};
   try {
     // no-corsモードでCORSエラーを回避（Slack webhookはtext/plainも受け付ける）
     await fetch(url, {
@@ -1903,44 +1968,43 @@ async function sendSlack(msg) {
       headers: {'Content-Type': 'text/plain'},
       body: JSON.stringify({text: msg})
     });
-  } catch(e) { console.log('Slack送信エラー:', e.message); }
+    return {ok:true};
+  } catch(e) {
+    console.log('Slack送信エラー:', e);
+    return {ok:false, error:(e && e.message) ? e.message : '通信エラー'};
+  }
 }
+
+// LINEグループID（設定が無い場合のフォールバック）
+const LINE_GROUP_ID_DEFAULT = 'Cfe08ec6e23f3fab9dbbd39e2c7bdc064';
 
 // LINE自動送信（Edge Function経由）
 async function sendLineMessage(msg) {
+  let groupId = '';
   try {
-    // グループIDをSupabaseから取得
-    let groupId = localStorage.getItem('kako_line_group_id');
-    if(!groupId) {
-      const rows = await sbFetch('kako_settings?key=eq.line_group_id&select=value');
-      if(rows && rows[0] && rows[0].value) {
-        groupId = rows[0].value;
-        localStorage.setItem('kako_line_group_id', groupId);
-      }
-    }
-    if(!groupId) {
-      showToast('⚠️ LINEグループIDが取得できていません');
-      return;
-    }
-    // Edge Functionに送信
+    groupId = await getKakoSetting('line_group_id', 'kako_line_group_id');
+  } catch(e) { console.log('グループID取得エラー:', e); }
+  if(!groupId) groupId = LINE_GROUP_ID_DEFAULT;
+
+  try {
     const res = await fetch('https://mfkqpsmfteiolgeqgnfx.supabase.co/functions/v1/line-webhook', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': 'sb_publishable_NV_AQykUo40ReFLWAuYoHQ_9m-Sn_ql'
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
       },
       body: JSON.stringify({ message: msg, groupId })
     });
     if(res.ok) {
-      showToast('✅ LINEグループに送信しました');
-    } else {
-      const err = await res.json();
-      console.error('LINE送信エラー:', err);
-      showToast('⚠️ LINE送信に失敗しました');
+      return {ok:true};
     }
+    const t = await res.text();
+    console.error('LINE送信エラー:', res.status, t);
+    return {ok:false, error: res.status + ' ' + (t||'').substring(0,100)};
   } catch(e) {
     console.error('LINE送信例外:', e);
-    showToast('⚠️ LINE送信に失敗しました');
+    return {ok:false, error:(e && e.message) ? e.message : '通信エラー'};
   }
 }
 
