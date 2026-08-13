@@ -279,7 +279,7 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
         <div class="sec" style="margin-bottom:0;"><span class="dot"></span>本日の注文状況（全員）</div>
         <span style="font-size:11px;background:var(--g100);color:var(--g700);padding:5px 11px;border-radius:20px;font-weight:700;" id="sum-date-badge"></span>
       </div>
-      <div style="font-size:11.5px;color:var(--txf);margin-bottom:14px;">📢 注文締切は <b>13:30</b> です。13:30を過ぎると注文できません。</div>
+      <div style="font-size:11.5px;color:var(--txf);margin-bottom:14px;">📢 弁当注文の受付時間は <b>前日の 8:00〜13:30</b> です。時間外は注文できません。</div>
       <div style="display:flex;gap:10px;margin-bottom:16px;">
         <div style="flex:1;background:var(--g50);border-radius:11px;padding:12px;text-align:center;">
           <div style="font-size:11px;color:var(--txs);margin-bottom:3px;">注文人数</div>
@@ -860,28 +860,28 @@ function bentoNextDate(base){
   return d;
 }
 
-// 注文受付中かどうか（9:00〜13:30）
+// 注文受付中かどうか（前日 8:00〜13:30）
 function isBentoOpen(){
   const d = new Date();
   const h = d.getHours(), m = d.getMinutes();
   const dow = d.getDay();
   if(dow===0) return false; // 日曜は受付なし（週末モード）
   if(dow===6) return false; // 土曜は受付なし（週末モード）
-  if(dow===5 && h>=9) return false; // 金曜9時以降は週末モード
-  // 平日9:00〜13:30
-  if(h < 9) return false;
+  if(dow===5 && h>=8) return false; // 金曜8時以降は週末モード
+  // 平日 8:00〜13:30
+  if(h < 8) return false;
   if(h > 13) return false;
-  if(h === 13 && m >= 30) return false; // 13:30以降はロック
+  if(h === 13 && m >= 30) return false;
   return true;
 }
 
-// 13:30以降かどうか（ロック判定）
+// ロック判定（8:00前 または 13:30以降）
 function isBentoClosed(){
   const d = new Date();
   const h = d.getHours(), m = d.getMinutes();
   const dow = d.getDay();
-  if((dow===5 && h>=9) || dow===6 || dow===0) return false; // 週末モードは別扱い
-  return (h > 13) || (h === 13 && m >= 30);
+  if((dow===5 && h>=8) || dow===6 || dow===0) return false; // 週末モードは別扱い
+  return (h < 8) || (h > 13) || (h === 13 && m >= 30);
 }
 function getTodayBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoTargetDate().getDay()]||[]), ...KAKO_FIXED_BENTO, ...KAKO_TAKEOUT_BENTO]; }
 function getTomorrowBentoItems(){ return [...(KAKO_WEEKLY_BENTO[bentoNextDate(bentoTargetDate()).getDay()]||[]), ...KAKO_FIXED_BENTO, ...KAKO_TAKEOUT_BENTO]; }
@@ -1378,7 +1378,7 @@ function renderBentoMenu() {
   if(badge){
     if(open){
       badge.style.background='var(--g100)'; badge.style.color='var(--g700)';
-      badge.textContent='✅ 受付中（〜13:30）';
+      badge.textContent='✅ 受付中（8:00〜13:30）';
     } else if((new Date().getDay()===5 && new Date().getHours()>=9) || new Date().getDay()===6 || new Date().getDay()===0){
       badge.style.background='#FFF0E0'; badge.style.color='#C86020';
       badge.textContent='🗓 週末注文受付中';
@@ -1406,10 +1406,18 @@ function renderBentoMenu() {
   // ===== 13:30以降はロック =====
   if(isBentoClosed()){
     document.getElementById('bento-list').innerHTML=`
-      <div style="text-align:center;padding:30px 16px;background:#FFF8F0;border-radius:14px;border:1.5px solid #F4C89A;">
-        <div style="font-size:28px;margin-bottom:8px;">🔒</div>
-        <div style="font-size:15px;font-weight:700;color:#C86020;margin-bottom:6px;">本日の受付は締め切りました</div>
-        <div style="font-size:12px;color:var(--txs);">弁当注文の締切時間は <b>13:30</b> です。<br>明日の注文は翌朝9:00から受付開始します。</div>
+      <div style="text-align:center;padding:36px 20px;background:linear-gradient(135deg,#FFF8F0,#FEF0E0);border-radius:16px;border:2px solid #F4C89A;">
+        <div style="font-size:40px;margin-bottom:12px;">🔒</div>
+        <div style="font-size:17px;font-weight:800;color:#C86020;margin-bottom:16px;">現在、弁当注文の受付時間外です</div>
+        <div style="background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:16px;border:1.5px solid #F4C89A;">
+          <div style="font-size:13px;color:#666;margin-bottom:6px;">📅 弁当注文の受付時間</div>
+          <div style="font-size:22px;font-weight:800;color:#C86020;">前日 8:00 〜 13:30</div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#8B4000;line-height:1.8;">
+          次回の注文は、<br>
+          <span style="font-size:16px;color:#C86020;">前日の8時から13時30分の間</span><br>
+          に注文してください。
+        </div>
       </div>`;
     updateBentoTotal();
     return;
