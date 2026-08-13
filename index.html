@@ -433,6 +433,21 @@ input:focus{outline:none;border-color:var(--g500);box-shadow:0 0 0 3px rgba(92,1
 </div><!-- /app -->
 
 <!-- ===== PIN設定モーダル ===== -->
+<!-- ===== 店内注文 確認モーダル ===== -->
+<div class="modal-bg" id="order-confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:95;align-items:center;justify-content:center;padding:20px;">
+  <div class="modal" style="text-align:left;max-width:340px;width:100%;">
+    <div style="font-size:15px;font-weight:800;margin-bottom:14px;">📋 注文内容の確認</div>
+    <div id="order-confirm-preview" style="font-size:13px;color:var(--txs);background:var(--g50);border-radius:10px;padding:12px;margin-bottom:16px;line-height:1.9;white-space:pre-wrap;"></div>
+    <div style="font-size:12px;color:var(--txs);margin-bottom:14px;">
+      この内容を確定して、店員さんのLINEに注文内容を送信してもよろしいでしょうか？
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn2" style="flex:1;" onclick="closeOrderConfirmModal()">キャンセル</button>
+      <button class="btn" style="flex:1;" onclick="executeStoreOrder()">OK・送信</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== アカウントメニューモーダル ===== -->
 <div class="modal-bg" id="pin-modal">
   <div class="modal" style="padding:0;overflow:hidden;max-width:340px;">
@@ -1295,7 +1310,24 @@ function updateOrderTotal() {
   if(lines.length) btn.onclick = confirmOrder;
 }
 
-async function confirmOrder() {
+// 確認モーダルを開く
+function confirmOrder() {
+  const orderLines = getAllOrderLines();
+  const items = orderLines.map(l=>l.label);
+  const total = orderLines.reduce((s,l)=>s+l.price, 0);
+  const preview = items.map(l=>'・'+l).join('\n') + `\n\n合計　¥${total.toLocaleString()}`;
+  document.getElementById('order-confirm-preview').textContent = preview;
+  const modal = document.getElementById('order-confirm-modal');
+  modal.style.display = 'flex';
+}
+
+function closeOrderConfirmModal() {
+  document.getElementById('order-confirm-modal').style.display = 'none';
+}
+
+// OK押下後：実際に注文処理
+async function executeStoreOrder() {
+  closeOrderConfirmModal();
   const orderLines = getAllOrderLines();
   const items = orderLines.map(l=>l.label);
   const total = orderLines.reduce((s,l)=>s+l.price, 0);
