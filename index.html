@@ -1036,6 +1036,12 @@ function doLogout() {
 }
 
 // ===== 今月の補助利用額 =====
+// DOM要素が無くても落ちない安全セッター
+function setTextById(id, v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+function setHtmlById(id, v){ const e=document.getElementById(id); if(e) e.innerHTML=v; }
+function setWidthById(id, v){ const e=document.getElementById(id); if(e) e.style.width=v; }
+function setDispById(id, v){ const e=document.getElementById(id); if(e) e.style.display=v; }
+
 async function refreshGauge() {
   if(!curUser) return;
   const now = new Date();
@@ -1052,14 +1058,14 @@ async function refreshGauge() {
   const pct = Math.min(100, Math.round(subsidy / LIMIT_SUBSIDY * 100));
   const remain = LIMIT_SUBSIDY - subsidy;
 
-  document.getElementById('gauge-amt').innerHTML = `¥${subsidy.toLocaleString()} <span style="color:var(--txf);font-weight:500;font-size:13px;">/ ¥7,500</span>`;
-  document.getElementById('gauge-fill').style.width = pct + '%';
-  document.getElementById('gauge-remain').textContent = `残り ¥${Math.max(0,remain).toLocaleString()}`;
-  document.getElementById('gauge-pct').textContent = pct + '% 利用中';
-  document.getElementById('acct-usage').textContent = `¥${subsidy.toLocaleString()} / ¥${LIMIT_SUBSIDY.toLocaleString()}`;
+  setHtmlById('gauge-amt', `¥${subsidy.toLocaleString()} <span style="color:var(--txf);font-weight:500;font-size:13px;">/ ¥7,500</span>`);
+  setWidthById('gauge-fill', pct + '%');
+  setTextById('gauge-remain', `残り ¥${Math.max(0,remain).toLocaleString()}`);
+  setTextById('gauge-pct', pct + '% 利用中');
+  setTextById('acct-usage', `¥${subsidy.toLocaleString()} / ¥${LIMIT_SUBSIDY.toLocaleString()}`);
 
-  document.getElementById('hist-total').textContent = '¥' + total.toLocaleString();
-  document.getElementById('hist-gauge').style.width = Math.min(100, total/150) + '%';
+  setTextById('hist-total', '¥' + total.toLocaleString());
+  setWidthById('hist-gauge', Math.min(100, total/150) + '%');
 }
 
 // ===== 店内注文メニュー =====
@@ -1396,18 +1402,19 @@ async function executeStoreOrder() {
 }
 
 function storeConfirm(){
-  document.getElementById('store-ok-btn').style.display='none';
-  document.getElementById('store-ok-box').style.display='flex';
+  setDispById('store-ok-btn','none');
+  setDispById('store-ok-box','flex');
 }
 
 function resetOrder(){
   orderMap = {};
   const st = document.getElementById('order-send-status'); if(st) st.innerHTML='';
-  document.getElementById('order-select').style.display='block';
-  document.getElementById('order-sent').style.display='none';
-  document.getElementById('store-ok-btn').style.display='block';
-  document.getElementById('store-ok-box').style.display='none';
+  setDispById('order-select','block');
+  setDispById('order-sent','none');
+  setDispById('store-ok-btn','block');
+  setDispById('store-ok-box','none');
   renderLunchMenu();
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 // ===== 弁当注文 =====
