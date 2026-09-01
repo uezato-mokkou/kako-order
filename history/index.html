@@ -179,7 +179,6 @@ async function load() {
   html += `<div class="mtotal">
     <div class="mtotal-lbl">${curY}年${curM}月　月合計</div>
     <div class="mtotal-amt">¥${grandTotal.toLocaleString()}</div>
-    <div class="mtotal-sub">${grandCount}個のご注文</div>
   </div>`;
 
   document.getElementById('content').innerHTML = html;
